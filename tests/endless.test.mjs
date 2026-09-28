@@ -76,7 +76,7 @@ test('campaign layouts are stored records, immutable and identical after any ret
     initial.tiles[0].ingredient = 'broken';
     assert.deepEqual(createGame(index), original, 'runtime state cannot mutate the authored board');
     assert.ok(Object.isFrozen(LEVELS[index].tiles[0]));
-    assert.equal(LEVELS[index].layoutVersion, 2);
+    assert.equal(LEVELS[index].layoutVersion, index<6?3:2);
     assert.equal(new Set(LEVELS[index].solution).size, original.tiles.length);
   }
 });

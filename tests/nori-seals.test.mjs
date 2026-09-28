@@ -52,7 +52,7 @@ test('one triple can peel several seals, even a covered one; undo never re-seals
   let next=pick(r.state,'seal');next=undoRailPick(next).state;
   assert.equal(isTilePickable(next,'seal'),true);assert.equal(next.tiles.find(t=>t.id==='seal').sealed,false);
   assert.equal(next.pantry.rice,1);assert.equal(next.harvests,1);
-  assert.equal(createGame(3).tiles.find(t=>t.id==='l4-food-27').sealed,true,'retry restores authored seals');
+  assert.equal(createGame(3).tiles.filter(t=>t.sealed).length,2,'retry restores authored seals');
 });
 
 test('a blocked board ends explicitly instead of hanging with fewer than seven rail cards',()=>{

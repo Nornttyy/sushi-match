@@ -127,7 +127,7 @@ export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(record => {
   }));
   const layerFoods = Array.from({ length: Math.max(...tiles.map(t => t.layer)) + 1 },
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
-  return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: 2, layerFoods, top: layerFoods.at(-1),
+  return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: info.designVersion || 2, layerFoods, top: layerFoods.at(-1),
     layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) };
 }));
 

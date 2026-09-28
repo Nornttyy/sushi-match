@@ -11,6 +11,7 @@ import { MENU_PAGES, menuPageIndex, stepMenuPage } from '../../src/menu-pages.js
 import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, SEAL_BANDS, getSealLayers, sealPeelPose } from '../../src/nori-seals.js';
 import { createPlayClock, formatTime } from '../../src/timer-core.js';
 import { outcomeSummary } from '../../src/outcome-core.js';
+import { BOARD_SHAPES, shapeBoardFrame, drawShapeGuide } from '../../src/board-shapes.js';
 
 const W = 390;
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
@@ -335,12 +336,14 @@ export class CanvasApp {
       this.ctx.save();if(i>0)this.ctx.globalAlpha=.85;this.ctx.translate(x+39,customerY+87+pose.y);this.ctx.scale(pose.sx,pose.sy);this.sprite('cat-portraits-v1.png',CAT_CROPS[cat.skin],-39,-80,78,80);this.ctx.restore();
       this.box(x+57,customerY+6,29,27,'#fffbed',9,'#deb587');this.food('sushi',RECIPES[cat.order].foodSprite,x+60,customerY+9,23,21);
     });
-    const board={x:21,y:top+196,w:348,h:H-top-387};this.board=board;
-    this.box(12,top+170,366,board.h+45,'#b96e4f',18,'#b97f60');this.text(g.tiles.some(t=>t.active&&t.sealed)?SEAL_HINT:'食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
-    this.box(board.x,board.y,board.w,board.h,'#efd19a',11);
+    const bay={x:21,y:top+196,w:348,h:H-top-387},shape=BOARD_SHAPES[s.level.shape];
+    const board=shapeBoardFrame(bay,s.level.shape);this.board=board;
+    this.box(12,top+170,366,bay.h+45,'#b96e4f',18,'#b97f60');this.text(g.tiles.some(t=>t.active&&t.sealed)?SEAL_HINT:shape?.label||'食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
+    this.box(bay.x,bay.y,bay.w,bay.h,shape?'#f2ddb8':'#efd19a',11);
+    drawShapeGuide(this.ctx,s.level.shape,board);
     const visible=new Set(getVisibleTiles(g).map(t=>t.id));
     const tiles=g.tiles.filter(t=>t.active).sort((a,b)=>a.layer-b.layer||a.y-b.y||a.x-b.x);
-    for(const tile of tiles){const w=board.w*.195,h=Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,open=visible.has(tile.id);
+    for(const tile of tiles){const w=board.w*(shape?s.level.footprint.x/100:.195),h=shape?board.h*s.level.footprint.y/100:Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,open=visible.has(tile.id);
       this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':'#cbb083',11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':'#e2c994',10,open?(tile.sealed?'#aec399':'#dcb37f'):'#c7b180');if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);}this.ctx.restore();});
       const available=open&&!tile.sealed&&g.status==='playing'&&this.motionTime>=this.mergeUntil;
       this.hit(x,y,w,h,available?()=>this.pickTile(tile,{x:x+w/2,y:y+h/2,w,h}):null,available?{key:'tile:'+tile.id}:{});

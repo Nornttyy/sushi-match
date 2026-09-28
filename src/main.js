@@ -32,6 +32,7 @@ import { mountJuice } from './juice.js';
 import { MOTION } from './motion-core.js';
 import { mountMenuBook } from './menu-book.js';
 import { createPlayClock, formatTime } from './timer-core.js';
+import { BOARD_SHAPES, shapeBoardFrame, svgPath } from './board-shapes.js';
 
 const LEVEL_STORAGE_KEY = 'sushi-stack-kitchen-level';
 const UNLOCK_STORAGE_KEY = 'sushi-stack-kitchen-unlocked-level';
@@ -46,6 +47,8 @@ const coinCount = document.querySelector('#coin-count');
 const comboCount = document.querySelector('#combo-count');
 const customerRail = document.querySelector('#customer-rail');
 const tileBoard = document.querySelector('#tile-board');
+const tileField = document.querySelector('#tile-field');
+const boardGuide = document.querySelector('#board-guide');
 const tileCount = document.querySelector('#tile-count');
 const prepTitle = document.querySelector('#prep-title');
 const recipeSlots = document.querySelector('#recipe-slots');
@@ -285,7 +288,25 @@ function currentRecipeNeeds(ingredient) {
 }
 
 const tileNodes = new Map();
+function renderBoardGeometry() {
+  const level=getLevel(state),shape=BOARD_SHAPES[level.shape];
+  const frame=shapeBoardFrame({x:0,y:0,w:tileBoard.clientWidth,h:tileBoard.clientHeight},level.shape);
+  tileBoard.dataset.shape=level.shape||'';
+  tileBoard.style.setProperty('--tile-width',level.footprint.x+'%');
+  tileBoard.style.setProperty('--tile-height',level.footprint.y+'%');
+  for(const element of [tileField,boardGuide])Object.assign(element.style,{left:frame.x+'px',top:frame.y+'px',width:frame.w+'px',height:frame.h+'px'});
+  if(boardGuide.dataset.shape!==(level.shape||'')){
+    boardGuide.dataset.shape=level.shape||'';boardGuide.replaceChildren();
+    if(shape){
+      const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+      svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');
+      for(const guide of shape.paths){const p=document.createElementNS(ns,'path');p.setAttribute('d',svgPath(guide.commands));p.setAttribute('fill',guide.fill);p.setAttribute('stroke',guide.stroke);p.setAttribute('stroke-width',guide.width);svg.append(p);}
+      boardGuide.append(svg);
+    }
+  }
+}
 function renderTileBoard() {
+  renderBoardGeometry();
   const visible = getVisibleTiles(state);
   const visibleIds = new Set(visible.map((tile) => tile.id));
   const activeTiles = state.tiles.filter((tile) => tile.active);
@@ -345,12 +366,12 @@ function renderTileBoard() {
       if (!badge) { badge = document.createElement('b'); badge.className = 'seal-count'; badge.setAttribute('aria-hidden', 'true'); button.append(badge); }
       badge.textContent = String(sealLayers);
     } else badge?.remove();
-    if (tileBoard.children[index] !== button) tileBoard.insertBefore(button, tileBoard.children[index] || null);
+    if (tileField.children[index] !== button) tileField.insertBefore(button, tileField.children[index] || null);
   });
   previousVisibleTiles = visibleIds;
   tileBoard.classList.toggle('is-generated', getLevel(state).footprint.y === 26);
   tileCount.textContent = '剩 ' + getRemainingTileCount(state);
-  document.getElementById('board-label').textContent = activeTiles.some(tile => tile.sealed) ? SEAL_HINT : '食材台';
+  document.getElementById('board-label').textContent = activeTiles.some(tile => tile.sealed) ? SEAL_HINT : BOARD_SHAPES[getLevel(state).shape]?.label || '食材台';
 }
 
 function renderPrep() {
@@ -829,5 +850,6 @@ syncSoundButtons();
 syncMenuInteractivity();
 render();
 renderMenu();
+new ResizeObserver(renderBoardGeometry).observe(tileBoard);
 void sounds.startBgm();
 requestAnimationFrame(clockFrame);
