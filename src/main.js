@@ -26,6 +26,7 @@ import { mountShop } from './shop-ui.js';
 import { mountFeedback } from './feedback.js';
 import { createCatPortrait, setCatState } from './cat-portrait.js';
 import { foodIcon, setFoodArt } from './food-art.js';
+import { SEAL_HINT } from './nori-seals.js';
 import { mountJuice } from './juice.js';
 import { MOTION } from './motion-core.js';
 import { mountMenuBook } from './menu-book.js';
@@ -283,8 +284,9 @@ function renderTileBoard() {
   const activeIds = new Set(activeTiles.map(tile => tile.id));
   for (const [id, node] of tileNodes) if (!activeIds.has(id)) { node.remove(); tileNodes.delete(id); }
   activeTiles.forEach((tile, index) => {
-    const isUncovered = visibleIds.has(tile.id) && isTilePickable(state, tile.id);
-    const canInteract = isUncovered && !isResolving && !isMenuOpen;
+    const isUncovered = visibleIds.has(tile.id);
+    const pickable = isTilePickable(state, tile.id);
+    const canInteract = pickable && !isResolving && !isMenuOpen;
     const newlyRevealed = isUncovered && !previousVisibleTiles.has(tile.id);
     let button = tileNodes.get(tile.id);
     if (!button) {
@@ -295,9 +297,9 @@ function renderTileBoard() {
     }
     button.type = 'button';
     button.className = 'stack-tile'
-      + (isUncovered ? ' is-pickable' : ' is-covered')
+      + (isUncovered ? (tile.sealed ? ' is-sealed' : ' is-pickable') : ' is-covered')
       + (newlyRevealed || (isUncovered && button.classList.contains('is-revealed')) ? ' is-revealed' : '')
-      + (isUncovered && getLevel(state).assist && currentRecipeNeeds(tile.ingredient) ? ' is-wanted' : '')
+      + (pickable && getLevel(state).assist && currentRecipeNeeds(tile.ingredient) ? ' is-wanted' : '')
       + ' layer-' + tile.layer;
     button.style.setProperty('--x', tile.x + '%');
     button.style.setProperty('--y', tile.y + '%');
@@ -305,17 +307,29 @@ function renderTileBoard() {
     button.style.setProperty('--tilt', tile.tilt + 'deg');
     button.dataset.tileId = tile.id;
     button.disabled = !canInteract;
-    button.setAttribute('aria-label', isUncovered ? INGREDIENTS[tile.ingredient].label : '被上方食材压住');
+    button.setAttribute('aria-label', isUncovered
+      ? INGREDIENTS[tile.ingredient].label + (tile.sealed ? '，海苔封条，旁边食材三消后揭开' : '')
+      : '被上方食材压住');
 
     const plate = button.firstElementChild;
     if (isUncovered && !plate.firstChild) plate.append(ingredientIcon(tile.ingredient, 'stack-food'));
     else if (isUncovered) setFoodArt(plate.firstChild, 'ingredient', tile.ingredient);
     else if (!isUncovered) plate.replaceChildren();
+    let seal = button.querySelector('.nori-seal');
+    if (isUncovered && tile.sealed && !seal) {
+      seal = document.createElement('span');
+      seal.className = 'nori-seal'; seal.dataset.locked = 'true';
+      seal.setAttribute('aria-hidden', 'true'); button.append(seal);
+    } else if (!isUncovered) seal?.remove();
+    else if (seal?.dataset.locked === 'true' && !tile.sealed) {
+      seal.dataset.locked = 'false'; juice.peel(seal);
+    }
     if (tileBoard.children[index] !== button) tileBoard.insertBefore(button, tileBoard.children[index] || null);
   });
   previousVisibleTiles = visibleIds;
   tileBoard.classList.toggle('is-generated', getLevel(state).footprint.y === 26);
   tileCount.textContent = '剩 ' + getRemainingTileCount(state);
+  document.getElementById('board-label').textContent = activeTiles.some(tile => tile.sealed) ? SEAL_HINT : '食材台';
 }
 
 function renderPrep() {
@@ -542,7 +556,7 @@ async function chooseTile(tileId) {
   }
   const result = selectTile(state, tileId);
   if (!result.changed) {
-    showMessage('这张食材还被上面的牌压着。');
+    showMessage(result.reason === 'sealed' ? SEAL_HINT : '这张食材还被上面的牌压着。');
     return;
   }
   const snapshot = juice.capture(state.tiles.find(tile => tile.id === tileId), getRailTiles(state));

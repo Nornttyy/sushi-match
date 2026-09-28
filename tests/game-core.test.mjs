@@ -47,6 +47,7 @@ function stateKey(state) {
   return [
     state.status,
     state.tiles.filter((tile) => tile.active).map((tile) => tile.id).join(','),
+    state.tiles.filter((tile) => tile.sealed).map((tile) => tile.id).join(','),
     state.rail.join(','),
     Object.values(state.pantry).join(','),
     state.served,
@@ -78,7 +79,7 @@ function findWinningState(initialState) {
       counts[tile.ingredient] = (counts[tile.ingredient] || 0) + 1;
       return counts;
     }, {});
-    const choices = getVisibleTiles(state).slice().sort((left, right) =>
+    const choices = getVisibleTiles(state).filter(tile => isTilePickable(state, tile.id)).sort((left, right) =>
       (railCounts[right.ingredient] || 0) - (railCounts[left.ingredient] || 0)
     );
     for (const tile of choices) {

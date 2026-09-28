@@ -1,5 +1,6 @@
 import { foodIcon } from './food-art.js';
 import { MOTION, flightPose, jellyFrames } from './motion-core.js';
+import { SEAL_MOTION_MS, sealPeelPose } from './nori-seals.js';
 
 const bounds = node => { const r=node?.getBoundingClientRect(); return r?.width?{x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height}:null; };
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -16,6 +17,13 @@ export function mountJuice({ board, rail, prep }) {
     return animation.finished.catch(()=>{}).then(()=>{animations.delete(animation);if(animatedNodes.get(node)===animation)animatedNodes.delete(node);done();animation.cancel();});
   }
   function bounce(node,strength=1) { if(node)void track(node,jellyFrames(strength),MOTION.bounce); }
+  function peel(node) {
+    const frames=Array.from({length:25},(_,i)=>{
+      const p=sealPeelPose(i/24);
+      return {offset:i/24,opacity:p.opacity,transform:`translateY(${p.y}px) rotate(${p.rotate}deg) scaleY(${p.sy})`};
+    });
+    void track(node,frames,SEAL_MOTION_MS,()=>node.remove());
+  }
   function sync() {
     rail.querySelectorAll('[data-rail-id]').forEach(slot=>slot.classList.toggle('is-arriving',flights.has(slot.dataset.railId)));
   }
@@ -74,5 +82,5 @@ export function mountJuice({ board, rail, prep }) {
   document.addEventListener('pointerup',release,{passive:true});document.addEventListener('pointercancel',release,{passive:true});
   window.addEventListener('resize',clear);
   window.addEventListener('blur',()=>{pressed?.animation.cancel();pressed=null;});
-  return {capture,pick,bounce,sync,clear};
+  return {capture,pick,bounce,peel,sync,clear};
 }

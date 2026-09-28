@@ -483,6 +483,35 @@ button {
   cursor: pointer;
 }
 
+/* A flat status ribbon, not a new ingredient sprite or a realistic texture. */
+.nori-seal {
+  position: absolute;
+  z-index: 3;
+  left: 37%;
+  top: 4%;
+  width: 26%;
+  height: 92%;
+  border: 2px solid #304d3b;
+  border-radius: 4px 2px 5px 3px;
+  background: #486950;
+  transform: rotate(-5deg);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.nori-seal::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 50%;
+  height: 12%;
+  background: #86a17a;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.stack-tile.is-sealed .stack-plate { border-color: #aec399; }
+
 /* Generated boards use the same normalized footprint as their overlap rules. */
 .tile-board.is-generated .stack-tile { width: 20%; height: 26%; border-radius: 14px; }
 .tile-board.is-generated .stack-plate { border-radius: 14px; }

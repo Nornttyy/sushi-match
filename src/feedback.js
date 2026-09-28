@@ -7,9 +7,11 @@ export function outcomeSummary(state) {
   const won = state.status === 'won';
   const endless = state.mode === 'endless';
   const rail = getRailTiles(state);
+  const sealed = state.failureReason === 'sealed';
   return {
     won,
-    title: endless ? won ? '第 ' + state.wave + ' 波完成！' : '无尽挑战结束' : won ? '今日寿司全送达！' : '七格备料栏满了',
+    title: endless ? won ? '第 ' + state.wave + ' 波完成！' : '无尽挑战结束' : won ? '今日寿司全送达！' : sealed ? '封条挡住了食材' : '七格备料栏满了',
+    failureLabel: sealed ? '先用邻牌三消揭开封条' : '7 / 7 · 没有空位了',
     kicker: won ? state.undoTokens === level.undoLimit ? '零撤回' : '营业完成' : '营业结束',
     orders: state.served + ' / ' + level.orders.length,
     coins: endless ? state.runCoins : state.coins,
@@ -80,7 +82,7 @@ export function mountFeedback({ overlay, gameShell, ingredientIcon }) {
           const slot = document.createElement('span'); slot.className = 'result-stuck-tile';
           slot.style.setProperty('--i', i); slot.append(ingredientIcon(kind)); tray.append(slot);
         });
-        const full = document.createElement('b'); full.className = 'result-full-label'; full.textContent = '7 / 7 · 没有空位了';
+        const full = document.createElement('b'); full.className = 'result-full-label'; full.textContent = summary.failureLabel;
         art.append(tray, full);
         gameShell.classList.add('is-failure-bump');
       }

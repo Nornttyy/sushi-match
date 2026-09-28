@@ -8,6 +8,7 @@ import { loadingSnapshot, createTaskCache } from '../../src/loading-core.js';
 import { MOTION, jellyPose, flightPose } from '../../src/motion-core.js';
 import { Session } from './session.js';
 import { MENU_PAGES, menuPageIndex, stepMenuPage } from '../../src/menu-pages.js';
+import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, sealPeelPose } from '../../src/nori-seals.js';
 
 const W = 390;
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
@@ -16,7 +17,7 @@ export class CanvasApp {
   constructor(platform) {
     this.p = platform; this.ctx = platform.canvas.getContext('2d'); this.session = new Session(platform);
     this.images = new Map(); this.cache = createTaskCache(); this.hits = []; this.bounce = 0;
-    this.motionTime = 0; this.flights = new Map(); this.pulses = new Map(); this.mergeUntil = 0;
+    this.motionTime = 0; this.flights = new Map(); this.pulses = new Map(); this.sealPeels = new Map(); this.mergeUntil = 0;
     this.loading = true; this.loadError = false; this.busyLoading = false; this.startedAt = platform.now();
     this.loaded = 0; this.total = GAME_IMAGES.length + 1; this.packageProgress = 0;
     this.page = Math.floor(this.session.selected / 3); this.tab = 'decor'; this.selectedDecor = null; this.previewTheme = null;
@@ -55,7 +56,8 @@ export class CanvasApp {
     if (this.hidden) return;
     const now = this.p.now(), elapsed = Math.min(50, now-this.lastFrame); this.lastFrame = now;
     this.motionTime += elapsed;
-    const wasMoving = this.flights.size || this.pulses.size;
+    const wasMoving = this.flights.size || this.pulses.size || this.sealPeels.size;
+    for (const [id, start] of this.sealPeels) if (this.motionTime-start >= SEAL_MOTION_MS) this.sealPeels.delete(id);
     for (const [id, flight] of this.flights) if (this.motionTime-flight.start >= flight.duration) {
       this.flights.delete(id); if(flight.merge)this.pulses.set('prep',this.motionTime);
     }
@@ -109,7 +111,7 @@ export class CanvasApp {
       this.render(this.p.now());
     }
   }
-  clearMotion() { this.flights.clear();this.pulses.clear();this.mergeUntil=0; }
+  clearMotion() { this.flights.clear();this.pulses.clear();this.sealPeels.clear();this.mergeUntil=0; }
   elastic(key,x,y,w,h,draw,strength=1) {
     const start=this.pulses.get(key),held=this.press?.target?.key===key&&!this.press.moved;
     const pose=held?{sx:1.09,sy:.84,y:3,rotate:0}:jellyPose(start===undefined?-1:(this.motionTime-start)/MOTION.bounce,strength);
@@ -119,7 +121,9 @@ export class CanvasApp {
   pickTile(tile,from) {
     if(this.motionTime<this.mergeUntil)return;
     const before=getRailTiles(this.session.game),matches=before.filter(t=>t.ingredient===tile.ingredient);
+    const sealed=this.session.game.tiles.filter(t=>t.active&&t.sealed).map(t=>t.id);
     if(!this.session.pick(tile.id))return;
+    for(const id of sealed)if(!this.session.game.tiles.find(t=>t.id===id).sealed)this.sealPeels.set(id,this.motionTime);
     const merge=matches.length===2,duration=merge?MOTION.merge:MOTION.pick;
     const after=getRailTiles(this.session.game);
     for(const [index,item] of before.entries()){
@@ -142,6 +146,15 @@ export class CanvasApp {
       this.box(-pose.w/2,-pose.h/2+3,pose.w,pose.h,'#cbaa83',9);this.box(-pose.w/2,-pose.h/2,pose.w,pose.h,'#fff9e8',9,flight.merge?'#f3ce83':'#fff2d6');
       this.food('ingredient',flight.ingredient,-pose.w*.44,-pose.h*.44,pose.w*.88,pose.h*.88);c.restore();
     }
+  }
+  drawSeal(tile,w,h) {
+    const start=this.sealPeels.get(tile.id);
+    const pose=sealPeelPose(start===undefined?0:(this.motionTime-start)/SEAL_MOTION_MS);
+    const c=this.ctx,sw=w*.26,sh=h*.92;
+    c.save();c.globalAlpha*=pose.opacity;c.translate(0,pose.y);c.rotate(pose.rotate*Math.PI/180);c.scale(1,pose.sy);
+    this.box(-sw/2,-sh/2,sw,sh,SEAL_COLORS.fill,3,SEAL_COLORS.edge);
+    c.beginPath();c.moveTo(sw/2-sw*.5,-sh/2);c.lineTo(sw/2,-sh/2);c.lineTo(sw/2,-sh/2+sh*.12);c.closePath();c.fillStyle=SEAL_COLORS.fold;c.fill();
+    c.restore();
   }
   hit(x,y,w,h,action,extra = {}) { this.hits.push({ x,y,w,h,action,...extra }); }
   box(x,y,w,h,color = '#fff4db', radius = 14, border = '') {
@@ -302,13 +315,13 @@ export class CanvasApp {
       this.box(x+57,customerY+6,29,27,'#fffbed',9,'#deb587');this.food('sushi',RECIPES[cat.order].foodSprite,x+60,customerY+9,23,21);
     });
     const board={x:21,y:top+196,w:348,h:H-top-387};this.board=board;
-    this.box(12,top+170,366,board.h+45,'#b96e4f',18,'#b97f60');this.text('食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
+    this.box(12,top+170,366,board.h+45,'#b96e4f',18,'#b97f60');this.text(g.tiles.some(t=>t.active&&t.sealed)?SEAL_HINT:'食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
     this.box(board.x,board.y,board.w,board.h,'#efd19a',11);
     const visible=new Set(getVisibleTiles(g).map(t=>t.id));
     const tiles=g.tiles.filter(t=>t.active).sort((a,b)=>a.layer-b.layer||a.y-b.y||a.x-b.x);
     for(const tile of tiles){const w=board.w*.195,h=Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,open=visible.has(tile.id);
-      this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':'#cbb083',11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':'#e2c994',10,open?'#dcb37f':'#c7b180');if(open)this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);this.ctx.restore();});
-      const available=open&&!s.delivery&&this.motionTime>=this.mergeUntil;
+      this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':'#cbb083',11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':'#e2c994',10,open?(tile.sealed?'#aec399':'#dcb37f'):'#c7b180');if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);}this.ctx.restore();});
+      const available=open&&!tile.sealed&&g.status==='playing'&&!s.delivery&&this.motionTime>=this.mergeUntil;
       this.hit(x,y,w,h,available?()=>this.pickTile(tile,{x:x+w/2,y:y+h/2,w,h}):null,available?{key:'tile:'+tile.id}:{});
     }
     const prepY=H-174;this.box(12,prepY,366,74,'#fff2d4',14,'#cb8d63');
@@ -328,7 +341,7 @@ export class CanvasApp {
     const s=this.session,g=s.game,won=g.status==='won',y=this.H/2-245;this.hits=[];
     this.box(0,0,W,this.H,'#543b2b99',0);this.box(23,y,344,488,'#fff4db',23,'#c7996b');
     if(won){['ginger','calico','gray'].forEach((skin,i)=>this.sprite('cat-portraits-v1.png',CAT_CROPS[skin],68+i*91,y+24,68,71));this.sprite('victory-platter-v1.png',null,55,y+76,280,150);}
-    else{this.text('七格备料栏满了',195,y+67,25);getRailTiles(g).forEach((tile,i)=>{this.box(48+i*43,y+110,39,44,'#fff9e7',7,'#c99a72');this.food('ingredient',tile.ingredient,51+i*43,y+114,33,35);});}
+    else{this.text(g.failureReason==='sealed'?'封条挡住了食材':'七格备料栏满了',195,y+67,25);getRailTiles(g).forEach((tile,i)=>{this.box(48+i*43,y+110,39,44,'#fff9e7',7,'#c99a72');this.food('ingredient',tile.ingredient,51+i*43,y+114,33,35);});if(g.failureReason==='sealed')this.text('先用邻牌三消揭开封条',195,y+181,13);}
     this.text(won?(g.mode==='endless'?'第 '+g.wave+' 波完成！':'今日寿司全送达！'):'下次再试试',195,y+255,24,'#a05d3e');
     this.text(g.served+' / '+g.customers.length+' 单',112,y+306,22);this.text('+'+(g.mode==='endless'?g.runCoins:g.coins)+' 金币',270,y+306,22);
     this.text(won?'金币已入账':'已赚金币保留',195,y+346,12);

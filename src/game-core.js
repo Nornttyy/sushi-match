@@ -1,5 +1,6 @@
 import { generateLayout, randomSource } from './level-generator.js';
 import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
+import { CAMPAIGN_SEALS, areSealNeighbours } from './nori-seals.js';
 
 export const INGREDIENTS = Object.freeze({
   rice: { label: '米饭' },
@@ -119,7 +120,8 @@ function freezeDefinition(value) {
 export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(record => {
   const { cards, solution, ...info } = record;
   const tiles = cards.map(([ingredient, layer, x, y, tilt], i) => ({
-    id: 'l' + info.id + '-food-' + i, ingredient, layer, x, y, tilt, active: true
+    id: 'l' + info.id + '-food-' + i, ingredient, layer, x, y, tilt, active: true,
+    sealed: (CAMPAIGN_SEALS[info.id] || []).includes(i)
   }));
   const layerFoods = Array.from({ length: Math.max(...tiles.map(t => t.layer)) + 1 },
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
@@ -313,7 +315,7 @@ export function getVisibleTiles(state) {
 
 export function isTilePickable(state, tileId) {
   const tile = getTile(state, tileId);
-  return Boolean(tile && tile.active && state.status === 'playing' && getVisibleTiles(state).some((item) => item.id === tileId));
+  return Boolean(tile && tile.active && !tile.sealed && state.status === 'playing' && getVisibleTiles(state).some((item) => item.id === tileId));
 }
 
 export function getRailTiles(state) {
@@ -363,7 +365,7 @@ export function canCraftActive(state) {
 
 export function selectTile(state, tileId) {
   if (!isTilePickable(state, tileId)) {
-    return { state, changed: false, reason: 'covered' };
+    return { state, changed: false, reason: getTile(state, tileId)?.sealed ? 'sealed' : 'covered' };
   }
 
   const next = clone(state);
@@ -373,8 +375,18 @@ export function selectTile(state, tileId) {
   next.pickHistory.push(tileId);
   const same = next.rail.filter((id) => getTile(next, id).ingredient === tile.ingredient);
   let harvested = null;
+  const unsealed = [];
 
   if (same.length === 3) {
+    // Keep each matched card's original board position, including the two
+    // already in the rail. Any one adjacent member opens a seal, once only.
+    const matchedTiles = same.map(id => getTile(next, id));
+    for (const target of next.tiles) {
+      if (target.active && target.sealed && matchedTiles.some(item => areSealNeighbours(target, item))) {
+        target.sealed = false;
+        unsealed.push(target.id);
+      }
+    }
     next.rail = next.rail.filter((id) => !same.includes(id));
     next.pickHistory = next.pickHistory.filter((id) => !same.includes(id));
     next.pantry[tile.ingredient] += 1;
@@ -385,7 +397,13 @@ export function selectTile(state, tileId) {
 
   if (next.rail.length >= getLevel(next).railLimit) {
     next.status = 'lost';
+    next.failureReason = 'full';
     next.event = '七格备料栏满了，没能凑出三连。';
+  } else if (next.tiles.some(item => item.active && item.sealed)
+    && !getVisibleTiles(next).some(item => !item.sealed)) {
+    next.status = 'lost';
+    next.failureReason = 'sealed';
+    next.event = '封条挡住了剩余食材。';
   } else if (!harvested) {
     const pairCount = next.rail.filter((id) => getTile(next, id).ingredient === tile.ingredient).length;
     next.event = pairCount === 2
@@ -393,7 +411,7 @@ export function selectTile(state, tileId) {
       : INGREDIENTS[tile.ingredient].label + '进入备料栏。';
   }
 
-  return { state: next, changed: true, harvested, crafted: false };
+  return { state: next, changed: true, harvested, unsealed, crafted: false };
 }
 
 export function craftActiveSushi(state) {
