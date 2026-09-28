@@ -533,6 +533,13 @@ button {
 }
 
 .stack-tile.is-sealed .stack-plate { border-color: #aec399; }
+.obstacle-art { position:absolute; inset:1%; width:98%; height:98%; z-index:4; overflow:visible; pointer-events:none; }
+.obstacle-art.is-opening { animation:obstacle-open 440ms ease-out both; }
+.obstacle-art.is-changed { animation:obstacle-thaw 440ms ease-out both; }
+.stack-tile.is-obstacle .stack-plate { border-color:#c8bb8d; }
+@keyframes obstacle-open { to { opacity:0; transform:translateY(-7px) scale(1.07); } }
+@keyframes obstacle-thaw { from { opacity:.55; } to { opacity:1; } }
+@media(prefers-reduced-motion:reduce) { .obstacle-art.is-opening { animation-duration:1ms; } .obstacle-art.is-changed { animation:none; } }
 .seal-count { position: absolute; right: 1px; bottom: 2px; z-index: 4; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 3px; border: 2px solid #486950; border-radius: 50%; background: #fff5db; color: #304d3b; font: 800 11px/1 sans-serif; pointer-events: none; }
 
 /* Generated boards use the same normalized footprint as their overlap rules. */

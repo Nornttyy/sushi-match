@@ -8,6 +8,7 @@ export function outcomeSummary(state) {
   const reasons = {
     timeout: ['时间到了', '下次先找能凑成三份的食材'],
     sealed: ['封条挡住了食材', '先用邻牌三消揭开封条'],
+    obstacle: ['机关挡住了食材', '先解冻、取钥匙，或配齐前面的订单'],
     full: ['七格备料栏满了', '7 / 7 · 没有空位了']
   };
   const [failureTitle, failureLabel] = reasons[reason] || reasons.full;

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { LEVELS, RECIPES, getCampaignLevel, createGame, getLevel, selectTile, getVisibleTiles,
-  canCraftActive, craftActiveSushi, serveActiveCustomer, advanceGameTime,
+  canCraftActive, craftActiveSushi, serveActiveCustomer, advanceGameTime, isTilePickable,
   normalizeCampaignIndex, campaignPreviewLastPage } from '../src/game-core.js';
 import { generateCampaignRecord, campaignSeed } from '../src/campaign-generator.js';
 import { layoutMixMetrics } from '../src/level-generator.js';
@@ -11,6 +11,10 @@ import { outcomeSummary } from '../src/outcome-core.js';
 import { Session } from '../wechat/src/session.js';
 
 const digest=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+function originalDeal(level){
+  const {obstacleVersion,obstacleKinds,...deal}=level;
+  return {...deal,tiles:level.tiles.map(({obstacle,key,...tile})=>tile)};
+}
 function settle(s){
   while(canCraftActive(s))s=serveActiveCustomer(craftActiveSushi(s).state).state;
   return s;
@@ -33,7 +37,7 @@ test('continuous campaign retains authored days and regenerates the same deal af
   assert.equal(LEVELS.length,48);
   for(let i=0;i<48;i++)assert.equal(getCampaignLevel(i),LEVELS[i]);
   const first=getCampaignLevel(48),snapshot=digest(first);
-  assert.equal(snapshot,'3d656b5be895a0708b0bf29c9d6da9e237d2177b6eb31bd3e08628ce6f0c0673','version 1 saves must not silently receive a new deal');
+  assert.equal(digest(originalDeal(first)),'3d656b5be895a0708b0bf29c9d6da9e237d2177b6eb31bd3e08628ce6f0c0673','obstacle overlays must not change the original deal');
   for(let i=49;i<70;i++)getCampaignLevel(i);
   const regenerated=getCampaignLevel(48);
   assert.notEqual(first,regenerated,'visited definitions are evicted from a bounded cache');
@@ -89,7 +93,7 @@ test('late campaign is not an automatic win and losing never changes a retry lay
   for(let attempt=0;attempt<30&&!lost;attempt++){
     let state=createGame(52),step=0;
     while(state.status==='playing'){
-      const choices=getVisibleTiles(state).filter(t=>!t.sealed);assert.ok(choices.length);
+      const choices=getVisibleTiles(state).filter(t=>isTilePickable(state,t.id));assert.ok(choices.length);
       state=settle(selectTile(state,choices[(attempt+step++*7)%choices.length].id).state);
     }
     if(state.status==='lost')lost=state;
@@ -104,7 +108,10 @@ test('native campaign crosses 48, 49 and 50 without resetting wallet or switchin
   let s=new Session(platform);s.start();
   for(let index=47;index<51;index++){
     assert.equal(s.game.levelIndex,index);const wallet=s.shop.coins;let picksDuringDelivery=0;
-    for(const id of s.level.solution){if(s.delivery)picksDuringDelivery++;assert.ok(s.pick(id));s.tick(20);}
+    for(const id of s.level.solution){
+      for(let n=0;n<200&&!isTilePickable(s.game,id);n++)s.tick(50);
+      if(s.delivery)picksDuringDelivery++;assert.ok(s.pick(id));s.tick(20);
+    }
     for(let n=0;n<1000&&s.game.status==='playing';n++)s.tick(50);
     assert.equal(s.game.status,'won');assert.ok(picksDuringDelivery>0);assert.equal(s.unlocked,index+1);
     assert.equal(s.shop.coins,wallet+s.game.coins);assert.equal(outcomeSummary(s.game).primary,'下一关');

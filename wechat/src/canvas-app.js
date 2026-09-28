@@ -13,6 +13,8 @@ import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, SEAL_BANDS, getSealLayers, seal
 import { createPlayClock, formatTime } from '../../src/timer-core.js';
 import { outcomeSummary } from '../../src/outcome-core.js';
 import { BOARD_SHAPES, shapeBoardFrame, drawShapeGuide } from '../../src/board-shapes.js';
+import { isObstacleLocked, boardObstacleHint, obstacleLabel, OBSTACLE_NAMES } from '../../src/obstacles.js';
+import { drawObstacleArt } from '../../src/obstacle-art.js';
 
 const W = 390;
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
@@ -83,6 +85,7 @@ export class CanvasApp {
     // An in-flight dish keeps moving during a rail merge; only starting a new
     // dish waits until its ingredient animation has reached the pantry.
     if (!this.loading) this.session.tick(elapsed, this.motionTime >= this.mergeUntil);
+    if(previous&&previous!==this.session.game)this.pulseObstacleChanges(previous);
     const noticeVisible = now < this.messageUntil;
     const resultMoving=this.session.scene==='game'&&this.session.game?.status!=='playing'&&this.motionTime-this.resultStarted<2100;
     if (this.loading || this.dirty || wasMoving || this.pulses.size || delivery || this.session.delivery || previous !== this.session.game || noticeVisible !== this.noticeVisible || resultMoving) {
@@ -138,9 +141,11 @@ export class CanvasApp {
   railRect(index) { return {x:46+index*49,y:this.H-this.bottom-40,w:44,h:42}; }
   pickTile(tile,from) {
     if(this.motionTime<this.mergeUntil)return;
+    const previous=this.session.game;
     const before=getRailTiles(this.session.game),matches=before.filter(t=>t.ingredient===tile.ingredient);
     const sealed=this.session.game.tiles.filter(t=>t.active&&t.sealed).map(t=>({id:t.id,layers:getSealLayers(t)}));
     if(!this.session.pick(tile.id))return;
+    this.pulseObstacleChanges(previous);
     for(const {id,layers} of sealed)if(getSealLayers(this.session.game.tiles.find(t=>t.id===id))<layers)this.sealPeels.set(id,{start:this.motionTime,band:layers-1});
     const merge=matches.length===2,duration=merge?MOTION.merge:MOTION.pick;
     const after=getRailTiles(this.session.game);
@@ -176,6 +181,12 @@ export class CanvasApp {
       c.beginPath();c.moveTo(sw/2-Math.min(9,sw*.45),-sh/2);c.lineTo(sw/2,-sh/2);c.lineTo(sw/2,-sh/2+Math.min(9,sh*.6));c.closePath();c.fillStyle=SEAL_COLORS.fold;c.fill();c.restore();
     }
     if(layers>1){this.box(w/2-20,h/2-20,19,19,'#fff5db',10,SEAL_COLORS.fill);this.text(layers,w/2-10.5,h/2-10.5,11,SEAL_COLORS.edge);}
+  }
+  pulseObstacleChanges(previous) {
+    for(const tile of this.session.game.tiles){
+      const before=previous.tiles.find(t=>t.id===tile.id);
+      if(before&&tile.active&&obstacleLabel(before,previous.served)!==obstacleLabel(tile,this.session.game.served))this.pulses.set('tile:'+tile.id,this.motionTime);
+    }
   }
   hit(x,y,w,h,action,extra = {}) { this.hits.push({ x,y,w,h,action,...extra }); }
   box(x,y,w,h,color = '#fff4db', radius = 14, border = '') {
@@ -270,7 +281,7 @@ export class CanvasApp {
     }
     const definition=getCampaignLevel(s.mode==='campaign'?s.selected:3);
     this.text(s.mode==='campaign'?'第 '+(s.selected+1)+' 天 · '+definition.name:'七格备料 · 持续挑战',195,bottom-141,18);
-    if(s.mode==='campaign')this.text('限时 '+formatTime(definition.timeLimitMs),195,bottom-176,12,'#956c48');
+    if(s.mode==='campaign')this.text('限时 '+formatTime(definition.timeLimitMs)+((definition.obstacleKinds||[]).length?' · '+definition.obstacleKinds.map(k=>OBSTACLE_NAMES[k]).join(' / '):''),195,bottom-176,12,'#956c48');
     const orders=[...new Set(definition.orders)];
     orders.slice(0,6).forEach((id,i)=>this.food('sushi',RECIPES[id].foodSprite,195-orders.length*16+i*32,bottom-119,28,28));
     const locked=s.mode==='campaign'&&s.selected>s.unlocked;
@@ -340,14 +351,14 @@ export class CanvasApp {
     });
     const bay={x:21,y:top+196,w:348,h:H-top-387},shape=BOARD_SHAPES[s.level.shape];
     const board=shapeBoardFrame(bay,s.level.shape);this.board=board;
-    this.box(12,top+170,366,bay.h+45,'#b96e4f',18,'#b97f60');this.text(g.tiles.some(t=>t.active&&t.sealed)?SEAL_HINT:shape?.label||'食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
+    const coverDepths=getTileCoverDepths(g),visibleIds=new Set([...coverDepths].filter(([,d])=>d===0).map(([id])=>id));
+    this.box(12,top+170,366,bay.h+45,'#b96e4f',18,'#b97f60');this.text(boardObstacleHint(g,visibleIds)||(g.tiles.some(t=>t.active&&t.sealed)?SEAL_HINT:shape?.label||'食材台'),28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
     this.box(bay.x,bay.y,bay.w,bay.h,shape?'#f2ddb8':'#efd19a',11);
     drawShapeGuide(this.ctx,s.level.shape,board);
-    const coverDepths=getTileCoverDepths(g);
     const tiles=g.tiles.filter(t=>t.active).sort((a,b)=>a.layer-b.layer||a.y-b.y||a.x-b.x);
     for(const tile of tiles){const w=board.w*(shape?s.level.footprint.x/100:.195),h=shape?board.h*s.level.footprint.y/100:Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,depth=coverDepths.get(tile.id),open=depth===0,back=tileDepthAppearance(depth);
-      this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':back.side,11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':back.face,10,open?(tile.sealed?'#aec399':'#dcb37f'):back.border);if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);}this.ctx.restore();});
-      const available=open&&!tile.sealed&&g.status==='playing'&&this.motionTime>=this.mergeUntil;
+      this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':back.side,11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':back.face,10,open?(tile.sealed?'#aec399':'#dcb37f'):back.border);if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);drawObstacleArt(this.ctx,tile,g.served,-w/2,-h/2,w,h);}this.ctx.restore();});
+      const available=open&&!tile.sealed&&!isObstacleLocked(tile,g.served)&&g.status==='playing'&&this.motionTime>=this.mergeUntil;
       this.hit(x,y,w,h,available?()=>this.pickTile(tile,{x:x+w/2,y:y+h/2,w,h}):null,available?{key:'tile:'+tile.id}:{});
     }
     const prepY=H-174;this.box(12,prepY,366,74,'#fff2d4',14,'#cb8d63');

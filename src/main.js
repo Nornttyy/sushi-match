@@ -33,6 +33,8 @@ import { mountMenuBook } from './menu-book.js';
 import { createPlayClock, formatTime } from './timer-core.js';
 import { BOARD_SHAPES, shapeBoardFrame, svgPath } from './board-shapes.js';
 import { tileDepthAppearance } from './tile-depth.js';
+import { isObstacleLocked, obstacleLabel, boardObstacleHint, OBSTACLE_NAMES } from './obstacles.js';
+import { renderObstacleArt } from './obstacle-art.js';
 
 const LEVEL_STORAGE_KEY = 'sushi-stack-kitchen-level';
 const UNLOCK_STORAGE_KEY = 'sushi-stack-kitchen-unlocked-level';
@@ -198,7 +200,7 @@ function renderMenu() {
   const canContinue = endlessSession && endlessSession.status !== 'lost';
   menuLevelTitle.textContent = endless ? '无尽营业' : '第 ' + level.id + ' 天 · ' + level.name;
   menuLevelCopy.textContent = endless ? '固定关卡 · 逐波加难' : available
-    ? level.orders.length + ' 单 · ' + formatTime(level.timeLimitMs) + ' · ' + level.difficulty
+    ? level.orders.length + ' 单 · ' + formatTime(level.timeLimitMs) + ' · ' + ((level.obstacleKinds||[]).map(k=>OBSTACLE_NAMES[k]).join(' / ')||level.difficulty)
     : '完成第 ' + selectedLevel + ' 天后解锁';
   menuStartButton.querySelector('span').textContent = endless ? (canContinue ? '继续第 ' + endlessSession.wave + ' 波' : '开始挑战') : available ? '开始营业' : '先完成第 ' + selectedLevel + ' 天';
   menuStartButton.disabled = !available;
@@ -328,7 +330,7 @@ function renderTileBoard() {
     }
     button.type = 'button';
     button.className = 'stack-tile'
-      + (isUncovered ? (tile.sealed ? ' is-sealed' : ' is-pickable') : ' is-covered')
+      + (isUncovered ? (tile.sealed ? ' is-sealed' : isObstacleLocked(tile,state.served)?' is-obstacle':' is-pickable') : ' is-covered')
       + (newlyRevealed || (isUncovered && button.classList.contains('is-revealed')) ? ' is-revealed' : '')
       + (pickable && getLevel(state).assist && currentRecipeNeeds(tile.ingredient) ? ' is-wanted' : '')
       + ' layer-' + tile.layer;
@@ -340,9 +342,10 @@ function renderTileBoard() {
     button.dataset.tileId = tile.id;
     button.dataset.coverDepth = String(coverDepths.get(tile.id));
     button.dataset.sealLayers = String(sealLayers);
+    button.dataset.obstacle = isUncovered&&isObstacleLocked(tile,state.served)?tile.obstacle.kind:'';
     button.disabled = !canInteract;
     button.setAttribute('aria-label', isUncovered
-      ? INGREDIENTS[tile.ingredient].label + (tile.sealed ? '，' + sealLayers + '层海苔，邻牌三消揭一层' : '')
+      ? INGREDIENTS[tile.ingredient].label + (tile.sealed ? '，' + sealLayers + '层海苔，邻牌三消揭一层' : '') + (obstacleLabel(tile,state.served)?'，'+obstacleLabel(tile,state.served):'')
       : '被上方食材压住');
 
     const plate = button.firstElementChild;
@@ -367,12 +370,13 @@ function renderTileBoard() {
       if (!badge) { badge = document.createElement('b'); badge.className = 'seal-count'; badge.setAttribute('aria-hidden', 'true'); button.append(badge); }
       badge.textContent = String(sealLayers);
     } else badge?.remove();
+    renderObstacleArt(button,tile,state.served,isUncovered);
     if (tileField.children[index] !== button) tileField.insertBefore(button, tileField.children[index] || null);
   });
   previousVisibleTiles = visibleIds;
   tileBoard.classList.toggle('is-generated', getLevel(state).footprint.y === 26);
   tileCount.textContent = '剩 ' + getRemainingTileCount(state);
-  document.getElementById('board-label').textContent = activeTiles.some(tile => tile.sealed) ? SEAL_HINT : BOARD_SHAPES[getLevel(state).shape]?.label || '食材台';
+  document.getElementById('board-label').textContent = boardObstacleHint(state,visibleIds) || (activeTiles.some(tile => tile.sealed) ? SEAL_HINT : BOARD_SHAPES[getLevel(state).shape]?.label || '食材台');
 }
 
 function renderPrep() {
@@ -607,7 +611,7 @@ async function resolveAutoOrders() {
     shop.award(result.reward);
     recordEndless();
     saveProgress();
-    sounds.play('serve');
+    sounds.play(state.status==='lost'?'lose':'serve');
     if (state.status === 'won') {
       unlockNextDay();
       sounds.play('win');
@@ -632,7 +636,7 @@ async function chooseTile(tileId) {
   if (updateClock()) return;
   const result = selectTile(state, tileId);
   if (!result.changed) {
-    showMessage(result.reason === 'sealed' ? SEAL_HINT : '这张食材还被上面的牌压着。');
+    showMessage(result.reason === 'sealed' ? SEAL_HINT : result.reason==='obstacle'?obstacleLabel(state.tiles.find(t=>t.id===tileId),state.served):'这张食材还被上面的牌压着。');
     return;
   }
   const snapshot = juice.capture(state.tiles.find(tile => tile.id === tileId), getRailTiles(state));

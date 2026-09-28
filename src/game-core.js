@@ -3,6 +3,7 @@ import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
 import { areSealNeighbours, getSealLayers } from './nori-seals.js';
 import { generateCampaignRecord } from './campaign-generator.js';
 import { campaignTimeLimit } from './timer-core.js';
+import { addCampaignObstacles, isObstacleLocked } from './obstacles.js';
 
 export const INGREDIENTS = Object.freeze({
   rice: { label: '米饭' },
@@ -128,11 +129,11 @@ function recordDefinition(record) {
   }));
   const layerFoods = Array.from({ length: Math.max(...tiles.map(t => t.layer)) + 1 },
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
-  return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: info.designVersion || 2, layerFoods, top: layerFoods.at(-1),
-    layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) };
+  return addCampaignObstacles({ ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: info.designVersion || 2, layerFoods, top: layerFoods.at(-1),
+    layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) }, RECIPES);
 }
 
-// Preserve the 48 authored opening days exactly. Later days are generated on
+// Preserve the 48 authored deals; obstacle overlays have their own version. Later days are generated on
 // demand; don't grow a global array or keep every visited board in memory.
 export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(recordDefinition));
 const campaignCache = new Map();
@@ -381,7 +382,16 @@ export function getTileCoverDepths(state) {
 
 export function isTilePickable(state, tileId) {
   const tile = getTile(state, tileId);
-  return Boolean(tile && tile.active && !tile.sealed && state.status === 'playing' && getVisibleTiles(state).some((item) => item.id === tileId));
+  return Boolean(tile && tile.active && !tile.sealed && !isObstacleLocked(tile,state.served) && state.status === 'playing' && getVisibleTiles(state).some((item) => item.id === tileId));
+}
+
+function resolveBlockedBoard(state) {
+  if(state.status!=='playing'||state.workbench.crafted||canCraftActiveInternal(state))return;
+  const active=state.tiles.filter(t=>t.active);
+  if(!active.length||getVisibleTiles(state).some(t=>!t.sealed&&!isObstacleLocked(t,state.served)))return;
+  const obstacle=active.some(t=>isObstacleLocked(t,state.served));
+  state.status='lost';state.failureReason=obstacle?'obstacle':'sealed';
+  state.event=obstacle?'机关挡住了剩余食材。':'封条挡住了剩余食材。';
 }
 
 export function getRailTiles(state) {
@@ -445,7 +455,8 @@ export function advanceGameTime(state, milliseconds) {
 
 export function selectTile(state, tileId) {
   if (!isTilePickable(state, tileId)) {
-    return { state, changed: false, reason: getTile(state, tileId)?.sealed ? 'sealed' : 'covered' };
+    const tile=getTile(state,tileId);
+    return { state, changed: false, reason: tile?.sealed ? 'sealed' : isObstacleLocked(tile,state.served)?'obstacle':'covered' };
   }
 
   const next = clone(state);
@@ -458,8 +469,21 @@ export function selectTile(state, tileId) {
   let harvested = null;
   const unsealed = [];
   const peeled = [];
+  const obstacleChanges=[];
+  if(tile.key&&!tile.keyUsed){
+    tile.keyUsed=true;
+    for(const target of next.tiles)if(target.obstacle?.kind==='lock'&&target.obstacle.key===tile.key&&!target.obstacle.open){
+      target.obstacle.open=true;obstacleChanges.push({id:target.id,kind:'lock',remaining:0});
+    }
+  }
 
   if (same.length === 3) {
+    // Only ice visible BEFORE this pick thaws. Removing a covering card does
+    // not silently use the same match to melt a newly exposed block.
+    const exposed=new Set(getVisibleTiles(state).map(t=>t.id));
+    for(const target of next.tiles)if(target.active&&target.obstacle?.kind==='ice'&&target.obstacle.remaining>0&&exposed.has(target.id)){
+      target.obstacle.remaining--;obstacleChanges.push({id:target.id,kind:'ice',remaining:target.obstacle.remaining});
+    }
     // Keep each matched card's original board position, including the two
     // already in the rail. One triple peels ONE layer per neighbouring target,
     // even if two or three members of that triple touch the same target.
@@ -484,11 +508,6 @@ export function selectTile(state, tileId) {
     next.status = 'lost';
     next.failureReason = 'full';
     next.event = '七格备料栏满了，没能凑出三连。';
-  } else if (next.tiles.some(item => item.active && item.sealed)
-    && !getVisibleTiles(next).some(item => !item.sealed)) {
-    next.status = 'lost';
-    next.failureReason = 'sealed';
-    next.event = '封条挡住了剩余食材。';
   } else if (!harvested) {
     const pairCount = next.rail.filter((id) => getTile(next, id).ingredient === tile.ingredient).length;
     next.event = pairCount === 2
@@ -496,7 +515,8 @@ export function selectTile(state, tileId) {
       : INGREDIENTS[tile.ingredient].label + '进入备料栏。';
   }
 
-  return { state: next, changed: true, harvested, unsealed, peeled, crafted: false };
+  resolveBlockedBoard(next);
+  return { state: next, changed: true, harvested, unsealed, peeled, obstacleChanges, crafted: false };
 }
 
 export function craftActiveSushi(state) {
@@ -561,6 +581,7 @@ export function serveActiveCustomer(state) {
   }
   next.event = recipe.label + '已送达！获得 ' + reward + ' 金币。';
   resolveFinish(next);
+  resolveBlockedBoard(next);
   return { state: next, changed: true, served: recipe.id, reward };
 }
 

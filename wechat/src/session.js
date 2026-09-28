@@ -56,7 +56,7 @@ export class Session {
     if (this.delivery < 760) return;
     const result = serveActiveCustomer(this.game);
     this.game = result.state; this.delivery = 0;
-    if (result.changed) { this.shop = earnShopCoins(this.shop, result.reward); this.platform.effect(this.game.status === 'won' ? 'win' : 'serve'); this.record(); }
+    if (result.changed) { this.shop = earnShopCoins(this.shop, result.reward); this.platform.effect(this.game.status === 'won' ? 'win' : this.game.status==='lost'?'lose':'serve'); this.record(); }
   }
   record() {
     if (this.game?.mode === 'endless') {

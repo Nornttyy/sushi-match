@@ -49,6 +49,7 @@ function stateKey(state) {
     state.status,
     state.tiles.filter((tile) => tile.active).map((tile) => tile.id).join(','),
     state.tiles.filter((tile) => tile.sealed).map((tile) => tile.id+':'+tile.sealLayers).join(','),
+    JSON.stringify(state.tiles.filter(tile=>tile.obstacle||tile.key).map(tile=>[tile.id,tile.obstacle,tile.keyUsed])),
     // The solver never undoes: order in the rail cannot affect matching or
     // seal adjacency. Keep source identities, but deduplicate permutations.
     [...state.rail].sort().join(','),
@@ -92,7 +93,9 @@ function findWinningState(initialState) {
       const held=railCounts[tile.ingredient]||0;
       const complete=held+visibleCounts[tile.ingredient]>=3;
       const seals=state.tiles.filter(t=>t.active&&t.sealed&&areSealNeighbours(t,tile)).length;
-      return sealAware?held*10+(complete?30:0)+seals*2+tile.layer*.1:held;
+      const crate=state.tiles.some(t=>t.active&&t.obstacle?.kind==='crate'&&t.obstacle.orders>state.served);
+      const order=getActiveCustomer(state),needed=crate&&order&&getRecipe(order.order).ingredients.includes(tile.ingredient)&&!state.pantry[tile.ingredient];
+      return sealAware?held*10+(complete?30:0)+seals*2+(tile.key&&!tile.keyUsed?8:0)+(needed?6:0)+tile.layer*.1:held+(tile.key&&!tile.keyUsed?3:0);
     };
     choices.sort((left,right)=>priority(right)-priority(left));
     for (const tile of choices) {

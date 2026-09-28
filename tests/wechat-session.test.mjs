@@ -48,6 +48,10 @@ test('picking all 48 boards during delivery preserves every ingredient, order an
     for(const session of [s,reference]){session.unlocked=LEVELS.length-1;session.selected=level;session.start();}
     let picksInFlight=0;
     for(const id of LEVELS[level].solution){
+      // Only a sealed delivery box waits for the in-flight order; ordinary
+      // exposed food remains playable throughout the handoff.
+      const target=s.game.tiles.find(t=>t.id===id);
+      for(let n=0;n<200&&target.obstacle?.kind==='crate'&&s.game.served<target.obstacle.orders;n++)s.tick(50);
       if(s.delivery)picksInFlight++;
       assert.equal(s.pick(id),true);s.tick(20);
       assert.equal(reference.pick(id),true);finishDelivery(reference);
