@@ -10,7 +10,16 @@ function finishDelivery(s){
   assert.equal(s.delivery,0,'all ready orders finish before the next pick');
 }
 
-test('WeChat uses the same 24 authored campaign levels, orders and rewards',()=>{
+test('an old day-24 save keeps its progress and unlocks day 25 after completion',()=>{
+  const p=platform();p.set('sushi-wechat-progress-v1',{selected:23,unlocked:23,bestWave:7,bestOrders:32,muted:true});
+  const s=new Session(p);assert.equal(s.selected,23);assert.equal(s.unlocked,23);assert.equal(s.bestWave,7);assert.equal(s.muted,true);
+  s.start();for(const id of LEVELS[23].solution){assert.equal(s.pick(id),true);finishDelivery(s);}
+  assert.equal(s.unlocked,24);const wallet=s.shop.coins;s.advance();
+  assert.equal(s.game.mode,'campaign');assert.equal(s.game.levelIndex,24);assert.equal(s.shop.coins,wallet);
+  const restored=new Session(p);assert.equal(restored.selected,24);assert.equal(restored.unlocked,24);
+});
+
+test('WeChat uses the same 48 authored campaign levels, orders and rewards',()=>{
   const p=platform(),s=new Session(p);
   for(let level=0;level<LEVELS.length;level++){
     s.selected=level;assert.equal(s.start(),true);
@@ -18,7 +27,7 @@ test('WeChat uses the same 24 authored campaign levels, orders and rewards',()=>
     assert.equal(s.game.status,'won');assert.equal(s.game.served,LEVELS[level].orders.length);
     assert.ok(s.shop.coins>=s.game.coins);
   }
-  assert.equal(new Session(p).unlocked,23);
+  assert.equal(new Session(p).unlocked,LEVELS.length-1);
 });
 test('no duplicate reward when leaving during delivery or returning from the background',()=>{
   const p=platform(),s=new Session(p);s.mode='endless';s.start();
@@ -33,10 +42,10 @@ test('locked days cannot start and storage failures stay visible instead of pret
   const broken=new Session({get(){return null;},set(){return false;},effect(){},sound(){}});assert.equal(broken.saved,false);
 });
 
-test('picking all 24 boards during delivery preserves every ingredient, order and reward',()=>{
+test('picking all 48 boards during delivery preserves every ingredient, order and reward',()=>{
   for(let level=0;level<LEVELS.length;level++){
     const s=new Session(platform()),reference=new Session(platform());
-    for(const session of [s,reference]){session.unlocked=23;session.selected=level;session.start();}
+    for(const session of [s,reference]){session.unlocked=LEVELS.length-1;session.selected=level;session.start();}
     let picksInFlight=0;
     for(const id of LEVELS[level].solution){
       if(s.delivery)picksInFlight++;

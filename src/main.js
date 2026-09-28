@@ -213,6 +213,7 @@ function renderMenu() {
   levelPrevious.disabled = levelPage === 0;
   levelNext.disabled = (levelPage + 1) * 3 >= LEVELS.length;
   levelPageLabel.textContent = (levelPage * 3 + 1) + '–' + Math.min(LEVELS.length, (levelPage + 1) * 3) + ' / ' + LEVELS.length;
+  modePicker.querySelector('[data-mode="campaign"]').textContent='闯关 · '+LEVELS.length+' 天';
   menuRecipePreview.replaceChildren();
   for (const recipeId of new Set(endless ? ['salmon', 'makiCucumber', 'roe', 'makiAvocado'] : level.orders)) {
     const recipe = getRecipe(recipeId);

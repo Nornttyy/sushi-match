@@ -6,6 +6,19 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
+test('covered cards are opaque backs, never translucent food or a dimmed whole stack',()=>{
+  const rule=css.match(/\.stack-tile\.is-covered\s*\{([^}]+)\}/)[1];
+  assert.match(rule,/opacity:\s*1\s*;/);assert.match(rule,/filter:\s*none\s*;/);
+  const back=css.match(/\.stack-tile\.is-covered \.stack-plate\s*\{([^}]+)\}/)[1];
+  assert.match(back,/repeating-linear-gradient\(135deg, #efe1c8 0 4px, #e7d4b1 4px 9px\)/);
+  assert.match(main,/else if \(!isUncovered\) plate.replaceChildren\(\)/);
+});
+
+test('campaign count updates the mode button, never replaces the whole menu',()=>{
+  assert.match(main,/modePicker.querySelector\('\[data-mode="campaign"\]'\)/);
+  assert.doesNotMatch(main,/document.querySelector\('\[data-mode="campaign"\]'\)/);
+});
+
 test('the page is wired for a layered ingredient puzzle with automatic delivery', () => {
   [
     'customer-rail',

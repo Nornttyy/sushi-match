@@ -2,6 +2,7 @@
 // sequence along it. Every generated board has a witness solution, without a
 // search that could stall a phone or an unlimited rejection-sampling loop.
 export const GENERATED_FOOTPRINT = Object.freeze({ x: 20, y: 26 });
+export const MAX_STACK_LAYERS = 8;
 
 export function randomSource(seed) {
   let value = seed >>> 0;
@@ -23,11 +24,14 @@ function shuffled(items, random) {
 }
 
 function makePositions(count, random) {
+  if(count>MAX_STACK_LAYERS*12)throw new Error('Too many cards for eight layers');
   const positions = [];
   let layer = 0;
   while (positions.length < count) {
-    const xs = layer % 2 ? [26, 50, 74] : [14, 38, 62, 86];
-    const ys = layer % 2 ? [17, 46, 75] : [22, 51, 80];
+    // Preserve old smaller waves; widen large waves instead of adding layer 9.
+    const wide=count>84;
+    const xs = layer % 2 ? (wide?[16,38,60,82]:[26,50,74]) : [14,38,62,86];
+    const ys = layer % 2 ? (wide?[19,47,75]:[17,46,75]) : [22,51,80];
     const cells = shuffled(ys.flatMap(y => xs.map(x => ({ x, y, layer, tilt: 0 }))), random);
     positions.push(...cells.slice(0, count - positions.length));
     layer++;
@@ -137,6 +141,8 @@ function disperseClusters(tiles,route,footprint) {
 }
 
 export function generateLayout({ id, groups, seed, rank, positions:fixedPositions, footprint=GENERATED_FOOTPRINT, attempts=12, refine=false }) {
+  if(fixedPositions?.some(p=>!Number.isInteger(p.layer)||p.layer<0||p.layer>=MAX_STACK_LAYERS))
+    throw new Error('Authored positions exceed eight layers');
   let best=null,bestScore=Infinity;
   for(let attempt=0;attempt<attempts;attempt++){
     const random = randomSource(seed ^ Math.imul(attempt,0x9e3779b1));

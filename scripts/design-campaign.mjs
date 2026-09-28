@@ -6,6 +6,7 @@ import { generateLayout, layoutMixMetrics } from '../src/level-generator.js';
 import { areSealNeighbours } from '../src/nori-seals.js';
 import { readFileSync } from 'node:fs';
 import { shapeDesign } from './shape-positions.mjs';
+import { EXTRA_CAMPAIGN } from './extra-campaign.mjs';
 
 function designSeals(layout, day) {
   if(day<4)return [];
@@ -37,11 +38,12 @@ function designSeals(layout, day) {
 const designs=[];
 // Authored revisions keep difficulty tuning local to one day, without
 // changing the other fixed boards or any player's progress.
-const revisions={21:2};
-for(const record of CAMPAIGN_LAYOUTS){
-  if(record.id<=6){designs.push(record);continue;}
+const revisions={21:2,43:1,47:1,48:1};
+for(const record of [...CAMPAIGN_LAYOUTS.filter(r=>r.id<=24),...EXTRA_CAMPAIGN]){
+  if(record.id<=24&&![19,22].includes(record.id)){designs.push(record);continue;}
   const {cards,solution,seals,designVersion,designSeed,...info}=record;
-  const shape=shapeDesign(info.id,cards.length);
+  const count=info.orders.flatMap(id=>RECIPES[id].ingredients).length*3;
+  const shape=shapeDesign(info.id,count);
   let chosen,mixed=0;
   for(let attempt=0;attempt<2400&&!chosen;attempt++){
     const seed=(0x51f151+info.id*7919+attempt*104729+(revisions[info.id]||0))>>>0;
@@ -52,7 +54,7 @@ for(const record of CAMPAIGN_LAYOUTS){
     mixed++;
     const nextSeals=designSeals(layout,info.id);if(!nextSeals)continue;
     const ids=new Map(layout.tiles.map((t,i)=>[t.id,i]));
-    chosen={...info,shape:shape.shape,name:shape.name,footprint:shape.footprint,designVersion:4,designSeed:seed,
+    chosen={...info,shape:shape.shape,name:shape.name,footprint:shape.footprint,designVersion:5,designSeed:seed,
       cards:layout.tiles.map(t=>[t.ingredient,t.layer,t.x,t.y,t.tilt]),solution:layout.solution.map(id=>ids.get(id)),seals:nextSeals};
   }
   if(!chosen)throw Error('No bounded, mixed, sealed design for day '+info.id+' ('+mixed+' mixed candidates)');
@@ -60,10 +62,12 @@ for(const record of CAMPAIGN_LAYOUTS){
 }
 if(process.argv.includes('--patch')){
   const old=readFileSync(new URL('../src/campaign-layouts.js',import.meta.url),'utf8');
-  const fresh='// Fixed campaign: 24 authored roll, fish and double-platter boards. Cards: [ingredient, layer, x%, y%, tilt].\n'
+  const fresh='// Fixed campaign: 48 authored boards, at most 8 layers. Cards: [ingredient, layer, x%, y%, tilt].\n'
     +'// Authored offline with design-campaign.mjs; seals: [card index, layers].\n'
     +'// Every saved witness is replayed with the actual seven-slot, seal and timer rules.\n'
     +'export const CAMPAIGN_LAYOUTS = [\n'+designs.map(r=>'  '+JSON.stringify(r)).join(',\n')+'\n];\n';
-  process.stdout.write('*** Begin Patch\n*** Update File: '+new URL('../src/campaign-layouts.js',import.meta.url).pathname+'\n@@\n'
-    +old.trimEnd().split('\n').map(l=>'-'+l).join('\n')+'\n'+fresh.trimEnd().split('\n').map(l=>'+'+l).join('\n')+'\n*** End Patch');
+  const before=old.trimEnd().split('\n'),after=fresh.trimEnd().split('\n'),hunks=[];
+  for(let i=0;i<before.length-1;i++)if(before[i]!==after[i])hunks.push('@@\n-'+before[i]+'\n+'+after[i]);
+  if(after.length>before.length)hunks.push('@@\n'+after.slice(before.length-1,-1).map(l=>'+'+l).join('\n')+'\n '+before.at(-1));
+  process.stdout.write('*** Begin Patch\n'+(hunks.length?'*** Update File: '+new URL('../src/campaign-layouts.js',import.meta.url).pathname+'\n'+hunks.join('\n')+'\n':'')+'*** End Patch');
 }else console.log(JSON.stringify(designs.map(r=>({day:r.id,seals:r.seals,seed:r.designSeed})),null,2));

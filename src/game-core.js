@@ -1,4 +1,4 @@
-import { generateLayout, randomSource } from './level-generator.js';
+import { generateLayout, randomSource, MAX_STACK_LAYERS } from './level-generator.js';
 import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
 import { CAMPAIGN_SEALS, areSealNeighbours, getSealLayers } from './nori-seals.js';
 import { campaignTimeLimit } from './timer-core.js';
@@ -167,6 +167,8 @@ function ingredientUnitCounts(level) {
 }
 
 function validateLevel(level) {
+  if(level.layers.length>MAX_STACK_LAYERS||level.tiles.some(t=>!Number.isInteger(t.layer)||t.layer<0||t.layer>=MAX_STACK_LAYERS))
+    throw new Error('关卡“'+level.name+'”超出八层上限。');
   const expectedRawCount = level.orders
     .flatMap((recipeId) => RECIPES[recipeId].ingredients)
     .length * 3;

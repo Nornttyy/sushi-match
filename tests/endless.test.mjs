@@ -2,7 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LEVELS, RECIPES, createGame, createEndlessGame, nextEndlessWave, getLevel,
   isTilePickable, getVisibleTiles, selectTile, canCraftActive, craftActiveSushi, serveActiveCustomer } from '../src/game-core.js';
-import { layoutMixMetrics } from '../src/level-generator.js';
+import { layoutMixMetrics, generateLayout, MAX_STACK_LAYERS } from '../src/level-generator.js';
+
+test('the generator widens large boards and rejects a ninth authored layer',()=>{
+  assert.equal(MAX_STACK_LAYERS,8);
+  const layout=generateLayout({id:'cap',groups:Array(30).fill('rice'),seed:1,rank:26,attempts:1});
+  assert.equal(layout.tiles.length,90);assert.equal(layout.layers.length,8);
+  assert.ok(layout.tiles.every(t=>t.layer<8&&t.x>=10&&t.x<=90&&t.y>=13&&t.y<=87));
+  assert.throws(()=>generateLayout({id:'overflow',groups:Array(33).fill('rice'),seed:1,rank:26}),/eight layers/);
+  assert.throws(()=>generateLayout({id:'bad-layer',groups:['rice'],seed:1,rank:1,positions:[{x:50,y:50,layer:8}]}),/eight layers/);
+});
 
 function finishViaWitness(input) {
   let state = input;
@@ -24,8 +33,8 @@ function finishViaWitness(input) {
   return { state, peak };
 }
 
-test('24 campaign days preserve the tutorial and increase variety, depth and decisions', () => {
-  assert.equal(LEVELS.length, 24);
+test('48 campaign days preserve the tutorial and increase variety, depth and decisions', () => {
+  assert.equal(LEVELS.length, 48);
   assert.equal(LEVELS[0].assist, true);
   for (let i = 0; i < LEVELS.length; i++) {
     const initial = createGame(i);
@@ -58,6 +67,7 @@ test('the first 100 and very late fixed waves have legal solutions and bounded b
       const expected = getLevel(initial).orders.flatMap(id => RECIPES[id].ingredients).length * 3;
       assert.equal(initial.tiles.length, expected);
       assert.ok(initial.tiles.length <= 90, 'phone workload does not grow with run length');
+      assert.ok(getLevel(initial).layers.length<=8,'endless also respects the eight-layer cap');
       assert.equal(initial.wave, wave);
       const mix=layoutMixMetrics(initial.tiles,getLevel(initial).footprint);
       assert.ok(mix.largestCluster<=2,`wave ${wave}: no three-food same-layer clumps`);
@@ -76,7 +86,7 @@ test('campaign layouts are stored records, immutable and identical after any ret
     initial.tiles[0].ingredient = 'broken';
     assert.deepEqual(createGame(index), original, 'runtime state cannot mutate the authored board');
     assert.ok(Object.isFrozen(LEVELS[index].tiles[0]));
-    assert.equal(LEVELS[index].layoutVersion, index<6?3:4);
+    assert.equal(LEVELS[index].layoutVersion, index<6?3:index>=24||[18,21].includes(index)?5:4);
     assert.equal(new Set(LEVELS[index].solution).size, original.tiles.length);
   }
 });

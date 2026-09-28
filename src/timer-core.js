@@ -1,5 +1,5 @@
 // Later days allow less thinking time per tile; larger stacks and seals still
-// get a larger total budget. Round to a readable quarter-minute (2–4 minutes).
+// get a larger total budget. Round to a readable quarter-minute (2–4.5 minutes).
 export function campaignTimeLimit(cardCount, day, seals = 0) {
   return Math.ceil((60 + cardCount * (day <= 3 ? 3 : 2) + seals * 5) / 15) * 15000;
 }

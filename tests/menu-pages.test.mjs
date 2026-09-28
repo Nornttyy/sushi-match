@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {MENU_PAGES,menuPageIndex,stepMenuPage} from '../src/menu-pages.js';
 import {CanvasApp} from '../wechat/src/canvas-app.js';
+import {LEVELS} from '../src/game-core.js';
 
 test('main menu has three separate bounded pages, distinct from furniture pagination',()=>{
   assert.deepEqual(MENU_PAGES.map(p=>p.id),['home','business','decor']);
@@ -23,6 +24,16 @@ function harness(){
   const app=new CanvasApp(p);app.loading=false;app.render(0);
   return {app,text};
 }
+test('native level book reaches all 48 days and stops at the real final page',()=>{
+  const {app,text}=harness();app.session.unlocked=LEVELS.length-1;app.showMenuPage('business');
+  for(let page=0;page<Math.ceil(LEVELS.length/3);page++){
+    assert.equal(app.page,page);assert.ok(text.includes((page*3+1)+'–'+Math.min(page*3+3,LEVELS.length)+' / '+LEVELS.length));
+    const next=app.hits.find(h=>h.x===249&&h.w===35);
+    if(page<Math.ceil(LEVELS.length/3)-1){assert.ok(next?.action);next.action();app.render(0);}
+    else assert.ok(!next?.action);
+  }
+  assert.ok(text.includes('闯关 · 48 天'));assert.ok(text.includes('第 48 天'));
+});
 test('native page changes separate controls and preserve wallet, layout and level selection',()=>{
   const {app,text}=harness(),shop=JSON.stringify(app.session.shop);
   const labels=()=>app.hits.filter(h=>h.key).map(h=>h.key.split(':')[1]);

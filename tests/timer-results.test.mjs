@@ -11,8 +11,8 @@ import { CanvasApp } from '../wechat/src/canvas-app.js';
 const settle=s=>{while(s.status==='playing'&&(s.workbench.crafted||canCraftActive(s)))s=s.workbench.crafted?serveActiveCustomer(s).state:craftActiveSushi(s).state;return s;};
 function win(index=0) { let s=createGame(index);for(const id of getLevel(s).solution)s=settle(selectTile(s,id).state);return s; }
 
-test('campaign has 2–4 minute budgets, starts on a valid pick, endless stays unlimited',()=>{
-  for(const l of LEVELS){assert.ok(l.timeLimitMs>=120000&&l.timeLimitMs<=240000);assert.equal(l.timeLimitMs%15000,0);}
+test('campaign has scaled 2–4.5 minute budgets, starts on a valid pick, endless stays unlimited',()=>{
+  for(const l of LEVELS){assert.ok(l.timeLimitMs>=120000&&l.timeLimitMs<=(l.id<=24?240000:270000));assert.equal(l.timeLimitMs%15000,0);}
   assert.equal(campaignTimeLimit(18,1),120000);
   const initial=createGame(3);assert.equal(advanceGameTime(initial,900000).state,initial);
   const sealed=initial.tiles.find(t=>t.sealed);assert.equal(selectTile(initial,sealed.id).state.timeStarted,false);
@@ -76,7 +76,8 @@ test('result stars, time, distinct loss causes and routes reflect real state wit
   for(const [reason,title] of [['timeout','时间到了'],['full','七格备料栏满了'],['sealed','封条挡住了食材']]){
     const r=outcomeSummary({...won,status:'lost',failureReason:reason});assert.equal(r.title,title);assert.equal(r.primary,'再试一次');assert.equal(r.stars,0);assert.equal(r.detail,'已赚金币保留');
   }
-  assert.equal(outcomeSummary(win(23)).primary,'挑战无尽模式');
+  assert.equal(outcomeSummary(win(23)).primary,'下一关');
+  assert.equal(outcomeSummary(win(LEVELS.length-1)).primary,'挑战无尽模式');
 });
 
 test('native session expires once, retains earned wallet, replays same day, and returns home',()=>{
