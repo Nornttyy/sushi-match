@@ -481,7 +481,7 @@ export function serveActiveCustomer(state) {
   if (!state.workbench.crafted) {
     return { state, changed: false, reason: 'not-crafted' };
   }
-  if (state.workbench.crafted.recipeId !== active.order) {
+  if (state.workbench.crafted.recipeId !== active.order || state.workbench.crafted.customerId !== active.id) {
     return { state, changed: false, reason: 'wrong-sushi' };
   }
 

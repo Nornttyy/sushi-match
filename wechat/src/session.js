@@ -29,13 +29,13 @@ export class Session {
   }
   menu() { if (this.game?.mode === 'endless') this.endless = this.game; this.scene = 'menu'; this.menuPage = 'home'; this.delivery = 0; }
   pick(id) {
-    if (this.scene !== 'game' || this.delivery || !this.game) return false;
+    if (this.scene !== 'game' || !this.game) return false;
     const result = selectTile(this.game, id);
-    if (result.changed) { this.game = result.state; this.record(); this.platform.effect(this.game.status === 'lost' ? 'lose' : result.harvested ? 'triple' : 'pick'); }
+    if (result.changed) { this.game = result.state; if(this.game.status==='lost')this.delivery=0; this.record(); this.platform.effect(this.game.status === 'lost' ? 'lose' : result.harvested ? 'triple' : 'pick'); }
     return result.changed;
   }
   undo() {
-    if (this.scene !== 'game' || this.delivery || !this.game) return;
+    if (this.scene !== 'game' || !this.game) return;
     const result = undoRailPick(this.game); this.game = result.state;
     if (result.changed) this.platform.effect('pick');
   }
@@ -46,9 +46,9 @@ export class Session {
     if (result.expired) { this.record(); this.platform.effect('lose'); }
     return result.expired;
   }
-  tick(milliseconds) {
+  tick(milliseconds, allowCraft = true) {
     if (this.scene !== 'game' || this.game?.status !== 'playing') return;
-    if (!this.game.workbench.crafted && canCraftActive(this.game)) {
+    if (allowCraft && !this.game.workbench.crafted && canCraftActive(this.game)) {
       this.game = craftActiveSushi(this.game).state; this.delivery = 0;
     }
     if (!this.game.workbench.crafted) return;

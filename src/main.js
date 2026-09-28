@@ -115,7 +115,9 @@ let bestEndlessOrders = Math.max(0, readStoredLevel(ENDLESS_ORDERS_KEY));
 let state = createGame(selectedLevel);
 let previousVisibleTiles = new Set();
 let isMenuOpen = true;
+// Only rail merges briefly gate input. Delivery has its own single worker.
 let isResolving = false;
+let isDelivering = false;
 let resolveEpoch = 0;
 const playClock = createPlayClock();
 let timerDisplay = '';
@@ -258,9 +260,9 @@ function renderCustomers() {
       body.append(createCatPortrait(customer.skin));
       card.append(bubble, body); customerNodes.set(customer.id, card);
     }
-    card.className = 'customer-card'
-      + (active?.id === customer.id ? ' is-active' : '')
-      + (index > 0 ? ' is-queued' : '');
+    card.classList.add('customer-card');
+    card.classList.toggle('is-active', active?.id === customer.id);
+    card.classList.toggle('is-queued', index > 0);
     card.dataset.customerId = customer.id;
     card.setAttribute('aria-label', '顾客，想要' + recipe.label);
 
@@ -354,10 +356,16 @@ function renderTileBoard() {
 function renderPrep() {
   const active = getActiveCustomer(state);
   recipeSlots.replaceChildren();
-  craftedPlate.replaceChildren();
   pantry.replaceChildren();
-  craftedPlate.classList.remove('is-ready');
-  deliveryStatus.classList.remove('is-delivering');
+  const crafted = state.workbench.crafted;
+  const orderKey = crafted?.customerId || '';
+  // Picking while serving must not recreate the dish or restart its animation.
+  if (craftedPlate.dataset.order !== orderKey) {
+    craftedPlate.dataset.order = orderKey;
+    craftedPlate.replaceChildren(...(crafted ? [sushiIcon(crafted.recipeId, 'crafted-sushi')] : []));
+  }
+  craftedPlate.classList.toggle('is-ready', !!crafted);
+  deliveryStatus.classList.toggle('is-delivering', !!crafted);
 
   if (!active) {
     prepTitle.textContent = '今天收工';
@@ -368,10 +376,7 @@ function renderPrep() {
   const recipe = getRecipe(active.order);
   prepTitle.textContent = recipe.label;
   if (state.workbench.crafted) {
-    craftedPlate.classList.add('is-ready');
-    craftedPlate.append(sushiIcon(recipe.id, 'crafted-sushi'));
     deliveryStatus.textContent = '正在端餐';
-    deliveryStatus.classList.add('is-delivering');
   } else {
     getRecipeSlots(state).forEach((slot) => {
       const item = document.createElement('span');
@@ -451,7 +456,7 @@ function render() {
 
 function renderTimer() {
   const limited = Number.isFinite(state.timeRemainingMs);
-  const paused = document.hidden || isMenuOpen || isResolving;
+  const paused = document.hidden || isMenuOpen || isResolving || isDelivering;
   const label = !state.timeStarted ? '点牌开始' : paused && state.status === 'playing' ? '暂停' : '剩余';
   const value = formatTime(state.timeRemainingMs);
   const key = [limited, label, value, state.status].join(':');
@@ -463,10 +468,10 @@ function renderTimer() {
 }
 
 function updateClock(now = performance.now()) {
-  const elapsed = playClock.sample(now, !document.hidden && !isMenuOpen && !isResolving);
+  const elapsed = playClock.sample(now, !document.hidden && !isMenuOpen && !isResolving && !isDelivering);
   const result = advanceGameTime(state, elapsed); state = result.state;
   if (result.expired) {
-    resolveEpoch++; isResolving = false; juice.clear(); clearHandoff();
+    resolveEpoch++; isResolving = false; isDelivering = false; juice.clear(); clearHandoff();
     sounds.play('lose'); render();
   } else renderTimer();
   return result.expired;
@@ -538,14 +543,14 @@ async function animateHandoff(recipeId, customerId, epoch) {
 }
 
 async function resolveAutoOrders() {
-  if (isResolving || isMenuOpen || state.status !== 'playing') {
+  if (isDelivering || isResolving || isMenuOpen || state.status !== 'playing') {
     return;
   }
-  isResolving = true;
+  isDelivering = true;
   const currentEpoch = resolveEpoch;
   render();
 
-  while (currentEpoch === resolveEpoch && !isMenuOpen && state.status === 'playing') {
+  while (currentEpoch === resolveEpoch && !isMenuOpen && !isResolving && state.status === 'playing') {
     if (!state.workbench.crafted && canCraftActive(state)) {
       const crafted = craftActiveSushi(state);
       if (!crafted.changed) {
@@ -569,6 +574,9 @@ async function resolveAutoOrders() {
       break;
     }
 
+    // Read the latest state, which may include picks/merges/undo during flight.
+    // Never settle an animation against a different order or a restarted game.
+    if (state.workbench.crafted?.customerId !== crafted.customerId) break;
     const result = serveActiveCustomer(state);
     if (!result.changed) {
       break;
@@ -590,7 +598,7 @@ async function resolveAutoOrders() {
   }
 
   if (currentEpoch === resolveEpoch) {
-    isResolving = false;
+    isDelivering = false;
     render();
   }
 }
@@ -606,15 +614,16 @@ async function chooseTile(tileId) {
     return;
   }
   const snapshot = juice.capture(state.tiles.find(tile => tile.id === tileId), getRailTiles(state));
-  const epoch = resolveEpoch;
   state = result.state;
   // A merge has a short visual resolution; ordinary picks remain rapid-fire.
   isResolving = !!result.harvested || state.status === 'lost';
   sounds.play(result.harvested ? 'triple' : 'pick');
   if (state.status === 'lost') {
+    resolveEpoch++; isDelivering = false; clearHandoff();
     recordEndless();
     sounds.play('lose');
   }
+  const epoch = resolveEpoch;
   render();
   await juice.pick(snapshot, result.harvested);
   if (epoch !== resolveEpoch || isMenuOpen) return;
@@ -645,6 +654,7 @@ function restart(levelIndex = state.levelIndex) {
   juice.clear();
   resolveEpoch += 1;
   isResolving = false;
+  isDelivering = false;
   clearHandoff();
   state = createGame(levelIndex);
   previousVisibleTiles = new Set();
@@ -659,6 +669,7 @@ function showMainMenu() {
   if (state.mode === 'endless') endlessSession = state;
   resolveEpoch += 1;
   isResolving = false;
+  isDelivering = false;
   isMenuOpen = true;
   void sounds.startBgm();
   clearHandoff();
@@ -703,6 +714,7 @@ function installEndless(next) {
   juice.clear();
   resolveEpoch++;
   isResolving = false;
+  isDelivering = false;
   clearHandoff();
   state = next;
   endlessSession = next;

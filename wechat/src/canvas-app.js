@@ -78,7 +78,9 @@ export class CanvasApp {
       this.loading = false; this.dirty = true; this.p.musicReady();
     }
     const previous = this.session.game, delivery = this.session.delivery;
-    if (!this.loading && this.motionTime >= this.mergeUntil) this.session.tick(elapsed);
+    // An in-flight dish keeps moving during a rail merge; only starting a new
+    // dish waits until its ingredient animation has reached the pantry.
+    if (!this.loading) this.session.tick(elapsed, this.motionTime >= this.mergeUntil);
     const noticeVisible = now < this.messageUntil;
     const resultMoving=this.session.scene==='game'&&this.session.game?.status!=='playing'&&this.motionTime-this.resultStarted<2100;
     if (this.loading || this.dirty || wasMoving || this.pulses.size || delivery || this.session.delivery || previous !== this.session.game || noticeVisible !== this.noticeVisible || resultMoving) {
@@ -340,7 +342,7 @@ export class CanvasApp {
     const tiles=g.tiles.filter(t=>t.active).sort((a,b)=>a.layer-b.layer||a.y-b.y||a.x-b.x);
     for(const tile of tiles){const w=board.w*.195,h=Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,open=visible.has(tile.id);
       this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':'#cbb083',11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':'#e2c994',10,open?(tile.sealed?'#aec399':'#dcb37f'):'#c7b180');if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);}this.ctx.restore();});
-      const available=open&&!tile.sealed&&g.status==='playing'&&!s.delivery&&this.motionTime>=this.mergeUntil;
+      const available=open&&!tile.sealed&&g.status==='playing'&&this.motionTime>=this.mergeUntil;
       this.hit(x,y,w,h,available?()=>this.pickTile(tile,{x:x+w/2,y:y+h/2,w,h}):null,available?{key:'tile:'+tile.id}:{});
     }
     const prepY=H-174;this.box(12,prepY,366,74,'#fff2d4',14,'#cb8d63');
@@ -351,7 +353,7 @@ export class CanvasApp {
       else if(s.delivery<590){const pose=flightPose((s.delivery-240)/350,{x:195,y:prepY+28,w:51,h:51},{x:79,y:customerY+52,w:43,h:43});this.food('sushi',id,pose.x-pose.w/2,pose.y-pose.h/2,pose.w,pose.h);}
     }
     else this.elastic('prep',168,prepY+10,144,46,()=>getRecipeSlots(g).forEach((slot,i)=>this.food('ingredient',slot.ingredient,175+i*48,prepY+15,39,39,slot.filled?1:.22)),.7);
-    this.box(12,H-94,366,82,'#cf926b',14,'#b67752');this.text('备料栏',27,H-79,11,'#fff5e5','left');this.button('撤回 ×'+g.undoTokens,284,H-89,80,23,()=>{this.clearMotion();s.undo();},{disabled:!!s.delivery||this.motionTime<this.mergeUntil||!g.undoTokens||!g.rail.length,size:10});
+    this.box(12,H-94,366,82,'#cf926b',14,'#b67752');this.text('备料栏',27,H-79,11,'#fff5e5','left');this.button('撤回 ×'+g.undoTokens,284,H-89,80,23,()=>{this.clearMotion();s.undo();},{disabled:this.motionTime<this.mergeUntil||!g.undoTokens||!g.rail.length,size:10});
     const rail=getRailTiles(g);for(let i=0;i<7;i++){const x=24+i*49;this.box(x,H-61,44,42,'#8f8495',8,'#6e627d');if(rail[i]&&!this.flights.has(rail[i].id))this.elastic('rail:'+rail[i].id,x,H-61,44,42,()=>{this.box(x,H-61,44,42,'#fff8e6',8,'#f0d4a7');this.food('ingredient',rail[i].ingredient,x+4,H-58,36,36);},.45);}
     this.drawFlights();
     if(g.status!=='playing')this.drawResult();

@@ -78,3 +78,23 @@ test('native rail arrival cannot start a second bounce after the flight settles'
   step(MOTION.pick+20);assert.equal(app.flights.size,0);assert.equal(app.pulses.size,0);
   assert.equal(getRailTiles(app.session.game)[0].id,tile.id);
 });
+
+test('native delivery keeps tile and undo hit targets enabled, and moves during a concurrent merge',()=>{
+  const {app,step}=appHarness();let index=0;
+  for(;index<LEVELS[0].solution.length;index++){
+    app.session.pick(LEVELS[0].solution[index]);app.session.tick(20);
+    if(app.session.delivery){index++;break;}
+  }
+  app.render(0);const order=structuredClone(app.session.game.workbench.crafted),id=LEVELS[0].solution[index];
+  const hit=app.hits.find(h=>h.key==='tile:'+id);assert.ok(hit?.action);hit.action();
+  app.render(0);assert.ok(app.hits.some(h=>h.key?.startsWith('button:撤回')&&h.action));
+  app.session.undo();app.clearMotion();
+  const harvests=app.session.game.harvests;
+  while(app.session.game.harvests===harvests){
+    const id=LEVELS[0].solution[index++],tile=app.session.game.tiles.find(t=>t.id===id);
+    assert.ok(tile);app.pickTile(tile,{x:100,y:270,w:65,h:65});
+  }
+  const before=app.session.delivery;assert.ok(app.motionTime<app.mergeUntil);
+  step(100);assert.ok(app.session.delivery>before);assert.deepEqual(app.session.game.workbench.crafted,order);
+  app.hide();const paused=app.session.delivery;step(500);assert.equal(app.session.delivery,paused);
+});

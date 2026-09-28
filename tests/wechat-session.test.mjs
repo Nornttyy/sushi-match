@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Session } from '../wechat/src/session.js';
-import { LEVELS, getLevel, getVisibleTiles, canCraftActive } from '../src/game-core.js';
+import { LEVELS, getLevel, getVisibleTiles, canCraftActive, serveActiveCustomer } from '../src/game-core.js';
 const platform=()=>{const data=new Map();return {get:k=>data.get(k),set:(k,v)=>{data.set(k,JSON.parse(JSON.stringify(v)));return true;},effect(){},sound(){}};};
 function finishDelivery(s){
   // Interleaved boards can complete several queued recipes on the same pick.
@@ -31,6 +31,61 @@ test('no duplicate reward when leaving during delivery or returning from the bac
 test('locked days cannot start and storage failures stay visible instead of pretending to save',()=>{
   const s=new Session(platform());s.selected=23;assert.equal(s.start(),false);
   const broken=new Session({get(){return null;},set(){return false;},effect(){},sound(){}});assert.equal(broken.saved,false);
+});
+
+test('picking all 24 boards during delivery preserves every ingredient, order and reward',()=>{
+  for(let level=0;level<LEVELS.length;level++){
+    const s=new Session(platform()),reference=new Session(platform());
+    for(const session of [s,reference]){session.unlocked=23;session.selected=level;session.start();}
+    let picksInFlight=0;
+    for(const id of LEVELS[level].solution){
+      if(s.delivery)picksInFlight++;
+      assert.equal(s.pick(id),true);s.tick(20);
+      assert.equal(reference.pick(id),true);finishDelivery(reference);
+    }
+    finishDelivery(s);
+    assert.ok(picksInFlight>0);assert.equal(s.game.status,'won');
+    assert.equal(s.game.served,LEVELS[level].orders.length);assert.equal(s.game.rail.length,0);
+    assert.ok(Object.values(s.game.pantry).every(n=>n===0));
+    assert.equal(s.game.coins,reference.game.coins);assert.equal(s.shop.coins,reference.shop.coins);
+    const wallet=s.shop.coins;finishDelivery(s);assert.equal(s.shop.coins,wallet);
+  }
+});
+
+test('undo and new triples during a handoff retain its identity and do not consume its ingredients twice',()=>{
+  const s=new Session(platform());s.start();let step=0;
+  for(;step<LEVELS[0].solution.length;step++){s.pick(LEVELS[0].solution[step]);s.tick(20);if(s.delivery){step++;break;}}
+  const order=structuredClone(s.game.workbench.crafted),delivery=s.delivery,pantry=structuredClone(s.game.pantry),harvests=s.game.harvests;
+  const id=LEVELS[0].solution[step];assert.equal(s.pick(id),true);s.undo();
+  assert.equal(s.game.tiles.find(t=>t.id===id).active,true);assert.deepEqual(s.game.pantry,pantry);
+  assert.equal(s.delivery,delivery);assert.deepEqual(s.game.workbench.crafted,order);
+  while(s.game.harvests===harvests)assert.equal(s.pick(LEVELS[0].solution[step++]),true);
+  assert.equal(s.delivery,delivery);assert.deepEqual(s.game.workbench.crafted,order);
+  s.tick(50,false);assert.equal(s.delivery,delivery+50,'existing handoff advances while a merge gates new crafting');
+  for(const id of LEVELS[0].solution.slice(step))assert.equal(s.pick(id),true);
+  finishDelivery(s);assert.equal(s.game.status,'won');assert.ok(Object.values(s.game.pantry).every(n=>n===0));
+});
+
+test('a full rail during delivery cancels payout, and restarting rejects the old order',()=>{
+  const s=new Session(platform());s.start();
+  for(const id of LEVELS[0].solution){s.pick(id);s.tick(20);if(s.delivery)break;}
+  assert.ok(s.game.workbench.crafted);
+  const ingredients=['rice','rice','salmon','salmon','tuna','tuna','shrimp'];
+  s.game.tiles=ingredients.map((ingredient,i)=>({id:'fail-'+i,ingredient,active:i===6,layer:0,x:10+i*10,y:50,tilt:0}));
+  s.game.rail=s.game.tiles.slice(0,6).map(t=>t.id);s.game.pickHistory=[...s.game.rail];
+  const wallet=s.shop.coins;
+  assert.equal(s.pick('fail-6'),true);assert.equal(s.game.status,'lost');assert.equal(s.delivery,0);
+  for(let i=0;i<50;i++)s.tick(50);assert.equal(s.shop.coins,wallet);
+  assert.equal(serveActiveCustomer(s.game).changed,false);
+  s.advance();assert.equal(s.game.workbench.crafted,null);
+  for(let i=0;i<50;i++)s.tick(50);assert.equal(s.shop.coins,wallet);
+});
+
+test('a dish cannot be applied to another customer even when their recipes match',()=>{
+  const s=new Session(platform());s.start();
+  for(const id of LEVELS[0].solution){s.pick(id);s.tick(20);if(s.delivery)break;}
+  s.game.workbench.crafted.customerId='another-customer';
+  assert.equal(serveActiveCustomer(s.game).changed,false);
 });
 test('WeChat endless loss, retry and fixed layouts preserve income and records',()=>{
   let lost;
