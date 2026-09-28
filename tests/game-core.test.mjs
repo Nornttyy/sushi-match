@@ -47,7 +47,7 @@ function stateKey(state) {
   return [
     state.status,
     state.tiles.filter((tile) => tile.active).map((tile) => tile.id).join(','),
-    state.tiles.filter((tile) => tile.sealed).map((tile) => tile.id).join(','),
+    state.tiles.filter((tile) => tile.sealed).map((tile) => tile.id+':'+tile.sealLayers).join(','),
     state.rail.join(','),
     Object.values(state.pantry).join(','),
     state.served,

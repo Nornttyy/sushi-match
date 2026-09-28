@@ -45,13 +45,13 @@ function appHarness(){
   return {app,step(ms){for(let elapsed=0;elapsed<ms;elapsed+=20){now+=20;app.frame();}}};
 }
 test('native rapid picks merge from current positions, gate crafting, and clean up when finished',()=>{
-  const {app,step}=appHarness(),ids=LEVELS[0].solution;
-  for(const id of ids.slice(0,3)){const tile=app.session.game.tiles.find(t=>t.id===id);app.pickTile(tile,{x:100,y:270,w:65,h:65});step(20);}
+  const {app,step}=appHarness();
+  for(let i=0;i<3;i++){const tile=getVisibleTiles(app.session.game).find(t=>t.ingredient==='rice');assert.ok(tile);app.pickTile(tile,{x:100,y:270,w:65,h:65});step(20);}
   assert.equal(app.session.game.harvests,1);assert.equal(app.flights.size,3);
   assert.ok([...app.flights.values()].every(f=>f.merge));
   assert.ok(app.mergeUntil>app.motionTime);
   const count=app.session.game.tiles.filter(t=>t.active).length;
-  app.pickTile(app.session.game.tiles.find(t=>t.id===ids[3]),{x:100,y:270,w:65,h:65});
+  app.pickTile(getVisibleTiles(app.session.game)[0],{x:100,y:270,w:65,h:65});
   assert.equal(app.session.game.tiles.filter(t=>t.active).length,count,'merge cannot consume an accidental extra tap');
   step(MOTION.merge+MOTION.bounce+100);assert.equal(app.flights.size,0);assert.equal(app.pulses.size,0);
   assert.equal(getRailTiles(app.session.game).length,0);

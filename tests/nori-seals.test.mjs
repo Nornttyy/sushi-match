@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CAMPAIGN_SEALS, areSealNeighbours, sealPeelPose, SEAL_MOTION_MS } from '../src/nori-seals.js';
+import { CAMPAIGN_SEALS, areSealNeighbours, getSealLayers, sealPeelPose, SEAL_MOTION_MS } from '../src/nori-seals.js';
 import { LEVELS, createGame, createEndlessGame, getVisibleTiles, isTilePickable,
   selectTile, undoRailPick, canCraftActive, craftActiveSushi, serveActiveCustomer } from '../src/game-core.js';
 import { outcomeSummary } from '../src/feedback.js';
@@ -63,22 +63,56 @@ test('a blocked board ends explicitly instead of hanging with fewer than seven r
   assert.equal(selectTile(r.state,'seal').changed,false);
 });
 
-test('fixed seals start on day 4, ramp from one to four, and every authored route still wins',()=>{
+test('fixed multi-wrap seals start on day 4, ramp from two to six cards, and every route wins',()=>{
   for(let i=0;i<LEVELS.length;i++){
     let s=createGame(i);const seals=s.tiles.filter(t=>t.sealed).map(t=>t.id),peeled=[];
-    assert.equal(seals.length,i<3?0:i<6?1:i<12?2:i<18?3:4);
+    const layers=s.tiles.reduce((sum,t)=>sum+getSealLayers(t),0);let layerPeels=0;
+    assert.equal(seals.length,i<3?0:i===3?2:i<6?3:i<12?4:i<18?5:6);
+    assert.equal(Math.max(...s.tiles.map(getSealLayers)),i<3?0:i===3?1:i<18?2:3);
     assert.deepEqual(createGame(i).tiles,s.tiles);
     for(const id of LEVELS[i].solution){
       assert.equal(isTilePickable(s,id),true,`day ${i+1}, ${id}`);
-      const r=selectTile(s,id);s=r.state;peeled.push(...r.unsealed);
+      const r=selectTile(s,id);s=r.state;peeled.push(...r.unsealed);layerPeels+=r.peeled.length;
       assert.notEqual(s.status,'lost');assert.ok(s.rail.length<7);
       while(s.status==='playing'&&(s.workbench.crafted||canCraftActive(s)))s=s.workbench.crafted?serveActiveCustomer(s).state:craftActiveSushi(s).state;
     }
     assert.deepEqual(peeled.sort(),seals.sort());assert.equal(s.status,'won');
+    assert.equal(layerPeels,layers,'each layer needs a separate neighbouring triple');
     assert.equal(s.undoTokens,LEVELS[i].undoLimit);assert.ok(s.tiles.every(t=>!t.active&&!t.sealed));
   }
   assert.ok(Object.isFrozen(CAMPAIGN_SEALS[4]));
-  assert.ok(createEndlessGame().tiles.every(t=>!t.sealed),'endless course is unchanged in this release');
+  assert.ok(createEndlessGame().tiles.every(t=>!t.sealed),'endless remains free of seals');
+});
+
+test('three layers require three triples, undo preserves partial peeling, and retry restores all layers',()=>{
+  let s=createGame(18);
+  s.tiles=[tile('seal','nori',38,51,0,true),tile('spare','shrimp',38,80),
+    tile('r1','rice',14,51),tile('r2','rice',14,80),tile('r3','rice',86,80),
+    tile('s1','salmon',62,51),tile('s2','salmon',62,80),tile('s3','salmon',86,51),
+    tile('t1','tuna',38,22),tile('t2','tuna',14,22),tile('t3','tuna',86,22)];
+  s.tiles[0].sealLayers=3;
+  for(const [index,prefix] of ['r','s','t'].entries()){
+    const result=selectTile(pick(pick(s,prefix+'1'),prefix+'2'),prefix+'3');s=result.state;
+    assert.deepEqual(result.peeled,[{id:'seal',band:2-index,remaining:2-index}]);
+    assert.equal(getSealLayers(s.tiles[0]),2-index);
+    assert.equal(isTilePickable(s,'seal'),index===2);
+    assert.deepEqual(result.unsealed,index===2?['seal']:[]);
+    if(index<2){
+      assert.equal(selectTile(s,'seal').reason,'sealed');
+      s=undoRailPick(pick(s,'spare')).state;
+      assert.equal(getSealLayers(s.tiles[0]),2-index);
+    }
+  }
+  assert.equal(selectTile(s,'seal').changed,true);
+  assert.equal(Math.max(...createGame(18).tiles.map(getSealLayers)),3);
+});
+
+test('multiple neighbouring members in the same triple still remove only one layer per card',()=>{
+  const s=fixture();s.tiles.find(t=>t.id==='seal').sealLayers=2;
+  Object.assign(s.tiles.find(t=>t.id==='b'),{x:38,y:51});
+  const result=selectTile(pick(pick(s,'a'),'b'),'c');
+  assert.deepEqual(result.peeled,[{id:'seal',band:1,remaining:1}]);
+  assert.deepEqual(result.unsealed,[]);assert.equal(isTilePickable(result.state,'seal'),false);
 });
 
 test('seal animation is a single bounded, monotonic peel without a second bounce',()=>{
@@ -94,20 +128,21 @@ test('seal animation is a single bounded, monotonic peel without a second bounce
 test('native sealed hit boxes block taps, peel with the shared state, pause and clean up',()=>{
   let now=0;const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});
   const p={canvas:{getContext:()=>ctx},size:()=>({width:390,height:844,ratio:1,top:40,bottom:0}),get(){},set(){return true;},sound(){},effect(){},bind(){},now:()=>now,raf:()=>1,cancelRaf(){},musicReady(){},resource:x=>x,image:()=>Promise.resolve({width:1448,height:1086}),loadResources:()=>Promise.resolve()};
-  const app=new CanvasApp(p);app.loading=false;app.session.unlocked=23;app.session.selected=3;app.session.start();app.render(0);
+  const app=new CanvasApp(p);app.loading=false;app.session.unlocked=23;app.session.selected=3;app.session.start();
+  app.session.game=fixture();app.session.game.tiles.find(t=>t.id==='seal').sealLayers=2;app.render(0);
   const sealed=app.session.game.tiles.find(t=>t.sealed);
   assert.ok(!app.hits.some(h=>h.key==='tile:'+sealed.id));
   const before=app.session.game;app.pickTile(sealed,{x:80,y:200,w:60,h:60});assert.equal(app.session.game,before);
-  for(const id of LEVELS[3].solution.slice(0,6))app.session.pick(id);
-  // Replay the last triple through the animation adapter.
-  app.session.start();for(const id of LEVELS[3].solution.slice(0,5))app.session.pick(id);
-  app.pickTile(app.session.game.tiles.find(t=>t.id===LEVELS[3].solution[5]),{x:80,y:200,w:60,h:60});
-  assert.equal(app.session.game.tiles.find(t=>t.id===sealed.id).sealed,false);
+  app.session.pick('a');app.session.pick('b');
+  app.pickTile(app.session.game.tiles.find(t=>t.id==='c'),{x:80,y:200,w:60,h:60});
+  assert.equal(getSealLayers(app.session.game.tiles.find(t=>t.id===sealed.id)),1);
   assert.ok(app.sealPeels.has(sealed.id));app.render(0);
+  assert.equal(app.sealPeels.get(sealed.id).band,1);
+  assert.ok(!app.hits.some(h=>h.key==='tile:'+sealed.id),'partially peeled card stays locked');
   app.hide();now+=1000;app.frame();assert.equal(app.motionTime,0);
   app.show();assert.equal(app.sealPeels.size,0,'resume resize clears stale visual overlays, not game state');
-  assert.equal(app.session.game.tiles.find(t=>t.id===sealed.id).sealed,false);
-  app.sealPeels.set(sealed.id,app.motionTime);
+  assert.equal(getSealLayers(app.session.game.tiles.find(t=>t.id===sealed.id)),1);
+  app.sealPeels.set(sealed.id,{start:app.motionTime,band:1});
   for(let elapsed=0;elapsed<SEAL_MOTION_MS+50;elapsed+=20){now+=20;app.frame();}
   assert.equal(app.sealPeels.size,0);
   app.clearMotion();assert.equal(app.sealPeels.size,0);

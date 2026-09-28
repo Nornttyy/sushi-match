@@ -500,14 +500,14 @@ button {
 .nori-seal {
   position: absolute;
   z-index: 3;
-  left: 37%;
-  top: 4%;
-  width: 26%;
-  height: 92%;
+  left: var(--seal-x, 41%);
+  top: var(--seal-y, 4%);
+  width: var(--seal-w, 18%);
+  height: var(--seal-h, 92%);
   border: 2px solid #304d3b;
   border-radius: 4px 2px 5px 3px;
   background: #486950;
-  transform: rotate(-5deg);
+  transform: rotate(var(--seal-rotate, -5deg));
   transform-origin: 50% 50%;
   pointer-events: none;
 }
@@ -517,13 +517,14 @@ button {
   position: absolute;
   right: -2px;
   top: -2px;
-  width: 50%;
-  height: 12%;
+  width: min(9px, 45%);
+  height: min(9px, 60%);
   background: #86a17a;
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
 
 .stack-tile.is-sealed .stack-plate { border-color: #aec399; }
+.seal-count { position: absolute; right: 1px; bottom: 2px; z-index: 4; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 3px; border: 2px solid #486950; border-radius: 50%; background: #fff5db; color: #304d3b; font: 800 11px/1 sans-serif; pointer-events: none; }
 
 /* Generated boards use the same normalized footprint as their overlap rules. */
 .tile-board.is-generated .stack-tile { width: 20%; height: 26%; border-radius: 14px; }

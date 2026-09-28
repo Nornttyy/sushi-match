@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Session } from '../wechat/src/session.js';
-import { LEVELS, getLevel, getVisibleTiles } from '../src/game-core.js';
+import { LEVELS, getLevel, getVisibleTiles, canCraftActive } from '../src/game-core.js';
 const platform=()=>{const data=new Map();return {get:k=>data.get(k),set:(k,v)=>{data.set(k,JSON.parse(JSON.stringify(v)));return true;},effect(){},sound(){}};};
-function finishDelivery(s){for(let i=0;i<100;i++)s.tick(50);}
+function finishDelivery(s){
+  // Interleaved boards can complete several queued recipes on the same pick.
+  // Drain actual orders, not an assumed maximum of six deliveries.
+  for(let i=0;i<1000&&(s.game.workbench.crafted||canCraftActive(s.game));i++)s.tick(50);
+  assert.equal(s.delivery,0,'all ready orders finish before the next pick');
+}
 
 test('WeChat uses the same 24 authored campaign levels, orders and rewards',()=>{
   const p=platform(),s=new Session(p);

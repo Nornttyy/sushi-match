@@ -1,6 +1,6 @@
 import { generateLayout, randomSource } from './level-generator.js';
 import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
-import { CAMPAIGN_SEALS, areSealNeighbours } from './nori-seals.js';
+import { CAMPAIGN_SEALS, areSealNeighbours, getSealLayers } from './nori-seals.js';
 import { campaignTimeLimit } from './timer-core.js';
 
 export const INGREDIENTS = Object.freeze({
@@ -101,7 +101,7 @@ function proceduralLevel(id, name, rank, seed) {
   }
   const orders = Array.from({ length: Math.min(10, 4 + Math.floor(rank / 3)) }, (_, i) => pool[i % pool.length]);
   const groups = orders.flatMap(recipe => RECIPES[recipe].ingredients);
-  const layout = generateLayout({ id, groups, seed, rank });
+  const layout = generateLayout({ id, groups, seed, rank, refine: true });
   return {
     id, name, orders, ...layout, railLimit: 7, undoLimit: rank < 4 ? 2 : 1,
     difficulty: rank < 3 ? '进阶' : rank < 9 ? '挑战' : '高手',
@@ -119,14 +119,15 @@ function freezeDefinition(value) {
 }
 
 export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(record => {
-  const { cards, solution, ...info } = record;
+  const { cards, solution, seals, ...info } = record;
+  const sealMap = new Map(CAMPAIGN_SEALS[info.id] || []);
   const tiles = cards.map(([ingredient, layer, x, y, tilt], i) => ({
     id: 'l' + info.id + '-food-' + i, ingredient, layer, x, y, tilt, active: true,
-    sealed: (CAMPAIGN_SEALS[info.id] || []).includes(i)
+    sealed: sealMap.has(i), sealLayers: sealMap.get(i) || 0
   }));
   const layerFoods = Array.from({ length: Math.max(...tiles.map(t => t.layer)) + 1 },
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
-  return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: 1, layerFoods, top: layerFoods.at(-1),
+  return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: 2, layerFoods, top: layerFoods.at(-1),
     layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) };
 }));
 
@@ -395,15 +396,19 @@ export function selectTile(state, tileId) {
   const same = next.rail.filter((id) => getTile(next, id).ingredient === tile.ingredient);
   let harvested = null;
   const unsealed = [];
+  const peeled = [];
 
   if (same.length === 3) {
     // Keep each matched card's original board position, including the two
-    // already in the rail. Any one adjacent member opens a seal, once only.
+    // already in the rail. One triple peels ONE layer per neighbouring target,
+    // even if two or three members of that triple touch the same target.
     const matchedTiles = same.map(id => getTile(next, id));
     for (const target of next.tiles) {
       if (target.active && target.sealed && matchedTiles.some(item => areSealNeighbours(target, item))) {
-        target.sealed = false;
-        unsealed.push(target.id);
+        const band = getSealLayers(target) - 1;
+        target.sealLayers = band; target.sealed = band > 0;
+        peeled.push({ id: target.id, band, remaining: band });
+        if (!target.sealed) unsealed.push(target.id);
       }
     }
     next.rail = next.rail.filter((id) => !same.includes(id));
@@ -430,7 +435,7 @@ export function selectTile(state, tileId) {
       : INGREDIENTS[tile.ingredient].label + '进入备料栏。';
   }
 
-  return { state: next, changed: true, harvested, unsealed, crafted: false };
+  return { state: next, changed: true, harvested, unsealed, peeled, crafted: false };
 }
 
 export function craftActiveSushi(state) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LEVELS, RECIPES, createGame, createEndlessGame, nextEndlessWave, getLevel,
   isTilePickable, getVisibleTiles, selectTile, canCraftActive, craftActiveSushi, serveActiveCustomer } from '../src/game-core.js';
+import { layoutMixMetrics } from '../src/level-generator.js';
 
 function finishViaWitness(input) {
   let state = input;
@@ -31,6 +32,9 @@ test('24 campaign days preserve the tutorial and increase variety, depth and dec
     const result = finishViaWitness(initial);
     assert.equal(LEVELS[i].assist, i === 0);
     assert.equal(LEVELS[i].railLimit, 7);
+    const mix=layoutMixMetrics(initial.tiles,LEVELS[i].footprint);
+    assert.ok(mix.largestCluster<=2,`day ${i+1}: no three-food same-layer clumps`);
+    assert.equal(mix.dominance,0,`day ${i+1}: no layer dominated by one ingredient`);
     if (i > 4) assert.ok(result.peak >= 5, 'later layouts require buffering unmatched ingredients');
   }
   assert.ok(createGame(23).tiles.length > createGame(1).tiles.length);
@@ -55,6 +59,9 @@ test('the first 100 and very late fixed waves have legal solutions and bounded b
       assert.equal(initial.tiles.length, expected);
       assert.ok(initial.tiles.length <= 90, 'phone workload does not grow with run length');
       assert.equal(initial.wave, wave);
+      const mix=layoutMixMetrics(initial.tiles,getLevel(initial).footprint);
+      assert.ok(mix.largestCluster<=2,`wave ${wave}: no three-food same-layer clumps`);
+      assert.equal(mix.dominance,0);
       finishViaWitness(initial);
   }
 });
@@ -69,7 +76,7 @@ test('campaign layouts are stored records, immutable and identical after any ret
     initial.tiles[0].ingredient = 'broken';
     assert.deepEqual(createGame(index), original, 'runtime state cannot mutate the authored board');
     assert.ok(Object.isFrozen(LEVELS[index].tiles[0]));
-    assert.equal(LEVELS[index].layoutVersion, 1);
+    assert.equal(LEVELS[index].layoutVersion, 2);
     assert.equal(new Set(LEVELS[index].solution).size, original.tiles.length);
   }
 });

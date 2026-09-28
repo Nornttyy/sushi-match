@@ -1,6 +1,6 @@
 import { foodIcon } from './food-art.js';
 import { MOTION, flightPose, jellyFrames } from './motion-core.js';
-import { SEAL_MOTION_MS, sealPeelPose } from './nori-seals.js';
+import { SEAL_MOTION_MS, SEAL_BANDS, sealPeelPose } from './nori-seals.js';
 
 const bounds = node => { const r=node?.getBoundingClientRect(); return r?.width?{x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height}:null; };
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,7 +19,7 @@ export function mountJuice({ board, rail, prep }) {
   function bounce(node,strength=1) { if(node)void track(node,jellyFrames(strength),MOTION.bounce); }
   function peel(node) {
     const frames=Array.from({length:25},(_,i)=>{
-      const p=sealPeelPose(i/24);
+      const p=sealPeelPose(i/24, SEAL_BANDS[Number(node.dataset.band)]?.rotate);
       return {offset:i/24,opacity:p.opacity,transform:`translateY(${p.y}px) rotate(${p.rotate}deg) scaleY(${p.sy})`};
     });
     void track(node,frames,SEAL_MOTION_MS,()=>node.remove());

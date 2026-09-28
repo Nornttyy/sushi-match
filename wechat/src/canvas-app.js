@@ -8,7 +8,7 @@ import { loadingSnapshot, createTaskCache } from '../../src/loading-core.js';
 import { MOTION, jellyPose, flightPose } from '../../src/motion-core.js';
 import { Session } from './session.js';
 import { MENU_PAGES, menuPageIndex, stepMenuPage } from '../../src/menu-pages.js';
-import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, sealPeelPose } from '../../src/nori-seals.js';
+import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, SEAL_BANDS, getSealLayers, sealPeelPose } from '../../src/nori-seals.js';
 import { createPlayClock, formatTime } from '../../src/timer-core.js';
 import { outcomeSummary } from '../../src/outcome-core.js';
 
@@ -69,7 +69,7 @@ export class CanvasApp {
     this.advanceClock(now);
     this.motionTime += elapsed;
     const wasMoving = this.flights.size || this.pulses.size || this.sealPeels.size;
-    for (const [id, start] of this.sealPeels) if (this.motionTime-start >= SEAL_MOTION_MS) this.sealPeels.delete(id);
+    for (const [id, peel] of this.sealPeels) if (this.motionTime-peel.start >= SEAL_MOTION_MS) this.sealPeels.delete(id);
     for (const [id, flight] of this.flights) if (this.motionTime-flight.start >= flight.duration) {
       this.flights.delete(id); if(flight.merge)this.pulses.set('prep',this.motionTime);
     }
@@ -135,9 +135,9 @@ export class CanvasApp {
   pickTile(tile,from) {
     if(this.motionTime<this.mergeUntil)return;
     const before=getRailTiles(this.session.game),matches=before.filter(t=>t.ingredient===tile.ingredient);
-    const sealed=this.session.game.tiles.filter(t=>t.active&&t.sealed).map(t=>t.id);
+    const sealed=this.session.game.tiles.filter(t=>t.active&&t.sealed).map(t=>({id:t.id,layers:getSealLayers(t)}));
     if(!this.session.pick(tile.id))return;
-    for(const id of sealed)if(!this.session.game.tiles.find(t=>t.id===id).sealed)this.sealPeels.set(id,this.motionTime);
+    for(const {id,layers} of sealed)if(getSealLayers(this.session.game.tiles.find(t=>t.id===id))<layers)this.sealPeels.set(id,{start:this.motionTime,band:layers-1});
     const merge=matches.length===2,duration=merge?MOTION.merge:MOTION.pick;
     const after=getRailTiles(this.session.game);
     for(const [index,item] of before.entries()){
@@ -162,13 +162,16 @@ export class CanvasApp {
     }
   }
   drawSeal(tile,w,h) {
-    const start=this.sealPeels.get(tile.id);
-    const pose=sealPeelPose(start===undefined?0:(this.motionTime-start)/SEAL_MOTION_MS);
-    const c=this.ctx,sw=w*.26,sh=h*.92;
-    c.save();c.globalAlpha*=pose.opacity;c.translate(0,pose.y);c.rotate(pose.rotate*Math.PI/180);c.scale(1,pose.sy);
-    this.box(-sw/2,-sh/2,sw,sh,SEAL_COLORS.fill,3,SEAL_COLORS.edge);
-    c.beginPath();c.moveTo(sw/2-sw*.5,-sh/2);c.lineTo(sw/2,-sh/2);c.lineTo(sw/2,-sh/2+sh*.12);c.closePath();c.fillStyle=SEAL_COLORS.fold;c.fill();
-    c.restore();
+    const peel=this.sealPeels.get(tile.id),layers=getSealLayers(tile),c=this.ctx;
+    const indices=Array.from({length:layers},(_,i)=>i);if(peel)indices.push(peel.band);
+    for(const index of indices){
+      const band=SEAL_BANDS[index],pose=sealPeelPose(peel?.band===index?(this.motionTime-peel.start)/SEAL_MOTION_MS:0,band.rotate);
+      const sw=w*band.w/100,sh=h*band.h/100;
+      c.save();c.globalAlpha*=pose.opacity;c.translate(w*(band.x+band.w/2-50)/100,h*(band.y+band.h/2-50)/100+pose.y);c.rotate(pose.rotate*Math.PI/180);c.scale(1,pose.sy);
+      this.box(-sw/2,-sh/2,sw,sh,SEAL_COLORS.fill,3,SEAL_COLORS.edge);
+      c.beginPath();c.moveTo(sw/2-Math.min(9,sw*.45),-sh/2);c.lineTo(sw/2,-sh/2);c.lineTo(sw/2,-sh/2+Math.min(9,sh*.6));c.closePath();c.fillStyle=SEAL_COLORS.fold;c.fill();c.restore();
+    }
+    if(layers>1){this.box(w/2-20,h/2-20,19,19,'#fff5db',10,SEAL_COLORS.fill);this.text(layers,w/2-10.5,h/2-10.5,11,SEAL_COLORS.edge);}
   }
   hit(x,y,w,h,action,extra = {}) { this.hits.push({ x,y,w,h,action,...extra }); }
   box(x,y,w,h,color = '#fff4db', radius = 14, border = '') {

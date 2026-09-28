@@ -27,7 +27,7 @@ import { mountShop } from './shop-ui.js';
 import { mountFeedback } from './feedback.js';
 import { createCatPortrait, setCatState } from './cat-portrait.js';
 import { foodIcon, setFoodArt } from './food-art.js';
-import { SEAL_HINT } from './nori-seals.js';
+import { SEAL_HINT, SEAL_BANDS, getSealLayers } from './nori-seals.js';
 import { mountJuice } from './juice.js';
 import { MOTION } from './motion-core.js';
 import { mountMenuBook } from './menu-book.js';
@@ -294,6 +294,7 @@ function renderTileBoard() {
   activeTiles.forEach((tile, index) => {
     const isUncovered = visibleIds.has(tile.id);
     const pickable = isTilePickable(state, tile.id);
+    const sealLayers = getSealLayers(tile);
     const canInteract = pickable && !isResolving && !isMenuOpen;
     const newlyRevealed = isUncovered && !previousVisibleTiles.has(tile.id);
     let button = tileNodes.get(tile.id);
@@ -314,24 +315,34 @@ function renderTileBoard() {
     button.style.setProperty('--layer', String(tile.layer));
     button.style.setProperty('--tilt', tile.tilt + 'deg');
     button.dataset.tileId = tile.id;
+    button.dataset.sealLayers = String(sealLayers);
     button.disabled = !canInteract;
     button.setAttribute('aria-label', isUncovered
-      ? INGREDIENTS[tile.ingredient].label + (tile.sealed ? '，海苔封条，旁边食材三消后揭开' : '')
+      ? INGREDIENTS[tile.ingredient].label + (tile.sealed ? '，' + sealLayers + '层海苔，邻牌三消揭一层' : '')
       : '被上方食材压住');
 
     const plate = button.firstElementChild;
     if (isUncovered && !plate.firstChild) plate.append(ingredientIcon(tile.ingredient, 'stack-food'));
     else if (isUncovered) setFoodArt(plate.firstChild, 'ingredient', tile.ingredient);
     else if (!isUncovered) plate.replaceChildren();
-    let seal = button.querySelector('.nori-seal');
-    if (isUncovered && tile.sealed && !seal) {
-      seal = document.createElement('span');
-      seal.className = 'nori-seal'; seal.dataset.locked = 'true';
-      seal.setAttribute('aria-hidden', 'true'); button.append(seal);
-    } else if (!isUncovered) seal?.remove();
-    else if (seal?.dataset.locked === 'true' && !tile.sealed) {
-      seal.dataset.locked = 'false'; juice.peel(seal);
+    for (const seal of button.querySelectorAll('.nori-seal')) {
+      if (!isUncovered) seal.remove();
+      else if (seal.dataset.locked === 'true' && Number(seal.dataset.band) >= sealLayers) {
+        seal.dataset.locked = 'false'; juice.peel(seal);
+      }
     }
+    if (isUncovered) for (let band = 0; band < sealLayers; band++) {
+      if (button.querySelector('.nori-seal[data-locked="true"][data-band="' + band + '"]')) continue;
+      const seal = document.createElement('span'), geometry = SEAL_BANDS[band];
+      seal.className = 'nori-seal'; seal.dataset.locked = 'true'; seal.dataset.band = String(band);
+      for (const [key, value] of Object.entries(geometry)) seal.style.setProperty('--seal-' + key, value + (key === 'rotate' ? 'deg' : '%'));
+      seal.setAttribute('aria-hidden', 'true'); button.append(seal);
+    }
+    let badge = button.querySelector('.seal-count');
+    if (isUncovered && sealLayers > 1) {
+      if (!badge) { badge = document.createElement('b'); badge.className = 'seal-count'; badge.setAttribute('aria-hidden', 'true'); button.append(badge); }
+      badge.textContent = String(sealLayers);
+    } else badge?.remove();
     if (tileBoard.children[index] !== button) tileBoard.insertBefore(button, tileBoard.children[index] || null);
   });
   previousVisibleTiles = visibleIds;
