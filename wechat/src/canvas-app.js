@@ -1,4 +1,4 @@
-import { LEVELS, RECIPES, getVisibleTiles, getVisibleCustomers, getRailTiles, getRecipeSlots } from '../../src/game-core.js';
+import { getCampaignLevel, campaignPreviewLastPage, RECIPES, getVisibleTiles, getVisibleCustomers, getRailTiles, getRecipeSlots } from '../../src/game-core.js';
 import { FOOD_CROPS, FOOD_MASKS } from '../../src/food-art.js';
 import { CAT_CROPS } from '../../src/cat-portrait.js';
 import { SHOP_THEMES, getDecoration, getTheme, DECOR_FILTERS, getDecorCatalog, getShopRoomFrame } from '../../src/shop-core.js';
@@ -252,25 +252,25 @@ export class CanvasApp {
     this.box(13,top,364,bottom-top,'#e5cba4',13,'#c59f72');
     this.box(21,top+2,354,bottom-top-6,'#fff7e3',12);
     this.text('营业手册',195,top+35,29,'#a45e42');
-    this.button('闯关 · '+LEVELS.length+' 天',67,top+70,135,34,()=>{s.mode='campaign';},{active:s.mode==='campaign',size:12});
+    this.button('闯关',67,top+70,135,34,()=>{s.mode='campaign';},{active:s.mode==='campaign',size:12});
     this.button('无尽模式',213,top+70,110,34,()=>{s.mode='endless';},{active:s.mode==='endless',size:12});
     if(s.mode==='campaign'){
       for(let i=0;i<3;i++){const level=this.page*3+i,x=35+i*116,y=top+147,locked=level>s.unlocked;
-        if(level>=LEVELS.length)break;
         this.ctx.save();if(locked)this.ctx.globalAlpha=.5;
-        this.sprite('menu/shop-parts-v1.png',[44,806,537,299],x,y+12,88,50);this.food('sushi',RECIPES[LEVELS[level].orders[0]].foodSprite,x+8,y-17,72,63);this.ctx.restore();
+        this.sprite('menu/shop-parts-v1.png',[44,806,537,299],x,y+12,88,50);this.food('sushi',RECIPES[getCampaignLevel(level).orders[0]].foodSprite,x+8,y-17,72,63);this.ctx.restore();
         this.button('第 '+(level+1)+' 天'+(locked?' · 锁':''),x-2,y+65,94,27,()=>{s.selected=level;},{active:s.selected===level,size:11});
       }
       this.button('‹',106,top+250,35,29,()=>{this.page--;s.selected=this.page*3;},{disabled:this.page===0});
-      this.text((this.page*3+1)+'–'+Math.min(LEVELS.length,this.page*3+3)+' / '+LEVELS.length,195,top+265,11);
-      this.button('›',249,top+250,35,29,()=>{this.page++;s.selected=this.page*3;},{disabled:(this.page+1)*3>=LEVELS.length});
+      this.text((this.page*3+1)+'–'+(this.page*3+3),195,top+265,11);
+      this.button('›',249,top+250,35,29,()=>{this.page++;s.selected=this.page*3;},{disabled:this.page>=campaignPreviewLastPage(s.unlocked)});
     }else{
       this.text('∞',195,top+161,57,'#b76348');this.text('无尽营业',195,top+222,23);
       this.text('最高 '+s.bestWave+' 波 · 最多 '+s.bestOrders+' 单',195,top+260,12);
     }
-    this.text(s.mode==='campaign'?'第 '+(s.selected+1)+' 天 · '+LEVELS[s.selected].name:'七格备料 · 持续挑战',195,bottom-141,18);
-    if(s.mode==='campaign')this.text('限时 '+formatTime(LEVELS[s.selected].timeLimitMs),195,bottom-176,12,'#956c48');
-    const orders=[...new Set((s.mode==='campaign'?LEVELS[s.selected]:LEVELS[3]).orders)];
+    const definition=getCampaignLevel(s.mode==='campaign'?s.selected:3);
+    this.text(s.mode==='campaign'?'第 '+(s.selected+1)+' 天 · '+definition.name:'七格备料 · 持续挑战',195,bottom-141,18);
+    if(s.mode==='campaign')this.text('限时 '+formatTime(definition.timeLimitMs),195,bottom-176,12,'#956c48');
+    const orders=[...new Set(definition.orders)];
     orders.slice(0,6).forEach((id,i)=>this.food('sushi',RECIPES[id].foodSprite,195-orders.length*16+i*32,bottom-119,28,28));
     const locked=s.mode==='campaign'&&s.selected>s.unlocked;
     this.button(locked?'尚未解锁':s.mode==='endless'&&s.endless?.status==='playing'?'继续挑战':'开始营业',64,bottom-75,262,46,()=>s.start(),{active:true,disabled:locked,size:20});

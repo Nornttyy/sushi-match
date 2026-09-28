@@ -27,7 +27,7 @@ test('WeChat uses the same 48 authored campaign levels, orders and rewards',()=>
     assert.equal(s.game.status,'won');assert.equal(s.game.served,LEVELS[level].orders.length);
     assert.ok(s.shop.coins>=s.game.coins);
   }
-  assert.equal(new Session(p).unlocked,LEVELS.length-1);
+  assert.equal(new Session(p).unlocked,LEVELS.length);
 });
 test('no duplicate reward when leaving during delivery or returning from the background',()=>{
   const p=platform(),s=new Session(p);s.mode='endless';s.start();

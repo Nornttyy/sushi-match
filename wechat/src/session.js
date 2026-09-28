@@ -1,4 +1,4 @@
-import { LEVELS, createGame, createEndlessGame, nextEndlessWave, getLevel, selectTile, undoRailPick, canCraftActive, craftActiveSushi, serveActiveCustomer, advanceGameTime } from '../../src/game-core.js';
+import { getCampaignLevel, normalizeCampaignIndex, createGame, createEndlessGame, nextEndlessWave, getLevel, selectTile, undoRailPick, canCraftActive, craftActiveSushi, serveActiveCustomer, advanceGameTime } from '../../src/game-core.js';
 import { SHOP_STORAGE_KEY, restoreShop, earnShopCoins, purchaseAndPlace, purchaseTheme, moveDecoration, flipDecoration, storeDecoration } from '../../src/shop-core.js';
 
 const KEY = 'sushi-wechat-progress-v1';
@@ -7,8 +7,8 @@ export class Session {
     this.platform = platform;
     const stored = platform.get(KEY) || {};
     const integer = (value, max = 9999999) => Number.isSafeInteger(value) ? Math.max(0, Math.min(max, value)) : 0;
-    this.unlocked = integer(stored.unlocked, LEVELS.length - 1);
-    this.selected = Math.min(this.unlocked, integer(stored.selected, LEVELS.length - 1));
+    this.unlocked = normalizeCampaignIndex(stored.unlocked);
+    this.selected = Math.min(this.unlocked, normalizeCampaignIndex(stored.selected));
     this.bestWave = integer(stored.bestWave); this.bestOrders = integer(stored.bestOrders);
     this.muted = stored.muted === true;
     this.shop = restoreShop(platform.get(SHOP_STORAGE_KEY));
@@ -63,15 +63,14 @@ export class Session {
       this.endless = this.game;
       this.bestOrders = Math.max(this.bestOrders, this.game.runServed);
       this.bestWave = Math.max(this.bestWave, this.game.wave - (this.game.status === 'won' ? 0 : 1));
-    } else if (this.game?.status === 'won') this.unlocked = Math.max(this.unlocked, Math.min(LEVELS.length - 1, this.game.levelIndex + 1));
+    } else if (this.game?.status === 'won') this.unlocked = Math.max(this.unlocked, this.game.levelIndex + 1);
     this.persist();
   }
   advance() {
     if (!this.game || this.game.status === 'playing') return;
     if (this.game.status === 'lost') { this.start(true); return; }
     if (this.game.mode === 'endless') this.game = nextEndlessWave(this.game).state;
-    else if (this.game.levelIndex < LEVELS.length - 1) { this.selected = this.game.levelIndex + 1; this.game = createGame(this.selected); }
-    else { this.mode = 'endless'; this.game = createEndlessGame(); }
+    else { this.selected = this.game.levelIndex + 1; this.game = createGame(this.selected); }
     this.delivery = 0; this.persist();
   }
   replay() {
@@ -84,5 +83,5 @@ export class Session {
   flip(id) { this.shop = flipDecoration(this.shop, id); this.persist(); }
   store(id) { this.shop = storeDecoration(this.shop, id); this.persist(); }
   toggleSound() { this.muted = !this.muted; this.platform.sound(!this.muted); this.persist(); }
-  get level() { return this.game ? getLevel(this.game) : LEVELS[this.selected]; }
+  get level() { return this.game ? getLevel(this.game) : getCampaignLevel(this.selected); }
 }

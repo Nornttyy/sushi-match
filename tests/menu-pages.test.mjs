@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {MENU_PAGES,menuPageIndex,stepMenuPage} from '../src/menu-pages.js';
 import {CanvasApp} from '../wechat/src/canvas-app.js';
-import {LEVELS} from '../src/game-core.js';
+import {LEVELS,campaignPreviewLastPage} from '../src/game-core.js';
 
 test('main menu has three separate bounded pages, distinct from furniture pagination',()=>{
   assert.deepEqual(MENU_PAGES.map(p=>p.id),['home','business','decor']);
@@ -24,15 +24,20 @@ function harness(){
   const app=new CanvasApp(p);app.loading=false;app.render(0);
   return {app,text};
 }
-test('native level book reaches all 48 days and stops at the real final page',()=>{
+test('native level book extends past day 48 without a total and reveals one future page',()=>{
   const {app,text}=harness();app.session.unlocked=LEVELS.length-1;app.showMenuPage('business');
-  for(let page=0;page<Math.ceil(LEVELS.length/3);page++){
-    assert.equal(app.page,page);assert.ok(text.includes((page*3+1)+'–'+Math.min(page*3+3,LEVELS.length)+' / '+LEVELS.length));
+  const last=campaignPreviewLastPage(app.session.unlocked);
+  for(let page=0;page<=last;page++){
+    assert.equal(app.page,page);assert.ok(text.includes((page*3+1)+'–'+(page*3+3)));
     const next=app.hits.find(h=>h.x===249&&h.w===35);
-    if(page<Math.ceil(LEVELS.length/3)-1){assert.ok(next?.action);next.action();app.render(0);}
+    if(page<last){assert.ok(next?.action);next.action();app.render(0);}
     else assert.ok(!next?.action);
   }
-  assert.ok(text.includes('闯关 · 48 天'));assert.ok(text.includes('第 48 天'));
+  assert.ok(text.includes('闯关'));assert.ok(text.includes('第 48 天'));assert.ok(text.includes('第 49 天 · 锁'));
+  assert.equal(app.session.start(),false);
+  app.session.unlocked=48;app.render(0);
+  const next=app.hits.find(h=>h.x===249&&h.w===35);assert.ok(next?.action);
+  next.action();app.render(0);assert.ok(text.includes('52–54'));
 });
 test('native page changes separate controls and preserve wallet, layout and level selection',()=>{
   const {app,text}=harness(),shop=JSON.stringify(app.session.shop);

@@ -1,6 +1,6 @@
 import {
   INGREDIENTS,
-  LEVELS,
+  getCampaignLevel, normalizeCampaignIndex, campaignPreviewLastPage,
   advanceGameTime,
   canCraftActive,
   craftActiveSushi,
@@ -106,9 +106,8 @@ function writeStoredLevel(key, value) {
   }
 }
 
-const lastLevelIndex = LEVELS.length - 1;
-let savedLevel = Math.max(0, Math.min(readStoredLevel(LEVEL_STORAGE_KEY), lastLevelIndex));
-let unlockedLevel = Math.max(savedLevel, Math.min(readStoredLevel(UNLOCK_STORAGE_KEY, savedLevel), lastLevelIndex));
+let savedLevel = normalizeCampaignIndex(readStoredLevel(LEVEL_STORAGE_KEY));
+let unlockedLevel = Math.max(savedLevel, normalizeCampaignIndex(readStoredLevel(UNLOCK_STORAGE_KEY, savedLevel)));
 let selectedLevel = savedLevel;
 let selectedMode = 'campaign';
 let levelPage = Math.floor(savedLevel / 3);
@@ -152,7 +151,7 @@ function saveProgress() {
 
 function unlockNextDay() {
   if (state.mode === 'endless') return;
-  unlockedLevel = Math.max(unlockedLevel, Math.min(state.levelIndex + 1, lastLevelIndex));
+  unlockedLevel = Math.max(unlockedLevel, state.levelIndex + 1);
   writeStoredLevel(UNLOCK_STORAGE_KEY, unlockedLevel);
 }
 
@@ -194,7 +193,7 @@ function showMessage(text) {
 
 function renderMenu() {
   const endless = selectedMode === 'endless';
-  const level = LEVELS[selectedLevel];
+  const level = getCampaignLevel(selectedLevel);
   const available = endless || selectedLevel <= unlockedLevel;
   const canContinue = endlessSession && endlessSession.status !== 'lost';
   menuLevelTitle.textContent = endless ? '无尽营业' : '第 ' + level.id + ' 天 · ' + level.name;
@@ -211,9 +210,9 @@ function renderMenu() {
   endlessRecord.textContent = '最高 ' + bestEndlessWave + ' 波 · 最多 ' + bestEndlessOrders + ' 单';
   modePicker.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === selectedMode)));
   levelPrevious.disabled = levelPage === 0;
-  levelNext.disabled = (levelPage + 1) * 3 >= LEVELS.length;
-  levelPageLabel.textContent = (levelPage * 3 + 1) + '–' + Math.min(LEVELS.length, (levelPage + 1) * 3) + ' / ' + LEVELS.length;
-  modePicker.querySelector('[data-mode="campaign"]').textContent='闯关 · '+LEVELS.length+' 天';
+  levelNext.disabled = levelPage >= campaignPreviewLastPage(unlockedLevel);
+  levelPageLabel.textContent = (levelPage * 3 + 1) + '–' + ((levelPage + 1) * 3);
+  modePicker.querySelector('[data-mode="campaign"]').textContent='闯关';
   menuRecipePreview.replaceChildren();
   for (const recipeId of new Set(endless ? ['salmon', 'makiCucumber', 'roe', 'makiAvocado'] : level.orders)) {
     const recipe = getRecipe(recipeId);
@@ -226,11 +225,10 @@ function renderMenu() {
   }
   levelPicker.querySelectorAll('.menu-day').forEach((button, slot) => {
     const index = levelPage * 3 + slot;
-    button.hidden = index >= LEVELS.length;
-    if (button.hidden) return;
+    button.hidden = false;
     button.dataset.level = String(index);
     button.querySelector('.menu-day-label').textContent = '第 ' + (index + 1) + ' 天';
-    setFoodArt(button.querySelector('.sushi-icon'), 'sushi', getRecipe(LEVELS[index].orders[0]).foodSprite);
+    setFoodArt(button.querySelector('.sushi-icon'), 'sushi', getRecipe(getCampaignLevel(index).orders[0]).foodSprite);
     const available = index <= unlockedLevel;
     button.classList.toggle('is-selected', index === selectedLevel);
     button.classList.toggle('is-locked', !available);
@@ -759,14 +757,11 @@ overlayButton.addEventListener('click', () => {
     installEndless(state.status === 'won' ? nextEndlessWave(state).state : newEndlessGame());
     return;
   }
-  if (state.status === 'won' && state.levelIndex < LEVELS.length - 1) {
+  if (state.status === 'won') {
     selectedLevel = state.levelIndex + 1;
     unlockedLevel = Math.max(unlockedLevel, selectedLevel);
     writeStoredLevel(UNLOCK_STORAGE_KEY, unlockedLevel);
     restart(selectedLevel);
-  } else if (state.status === 'won') {
-    selectedMode = 'endless';
-    installEndless(newEndlessGame());
   } else {
     restart(state.levelIndex);
   }
@@ -805,7 +800,7 @@ modePicker.addEventListener('click', event => {
   renderMenu();
 });
 function turnLevelPage(direction) {
-  levelPage = Math.max(0, Math.min(Math.ceil(LEVELS.length / 3) - 1, levelPage + direction));
+  levelPage = Math.max(0, Math.min(campaignPreviewLastPage(unlockedLevel), levelPage + direction));
   selectedLevel = levelPage * 3;
   sounds.play('ui');
   renderMenu();

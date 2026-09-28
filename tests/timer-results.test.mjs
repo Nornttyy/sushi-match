@@ -77,7 +77,7 @@ test('result stars, time, distinct loss causes and routes reflect real state wit
     const r=outcomeSummary({...won,status:'lost',failureReason:reason});assert.equal(r.title,title);assert.equal(r.primary,'再试一次');assert.equal(r.stars,0);assert.equal(r.detail,'已赚金币保留');
   }
   assert.equal(outcomeSummary(win(23)).primary,'下一关');
-  assert.equal(outcomeSummary(win(LEVELS.length-1)).primary,'挑战无尽模式');
+  assert.equal(outcomeSummary(win(LEVELS.length-1)).primary,'下一关');
 });
 
 test('native session expires once, retains earned wallet, replays same day, and returns home',()=>{

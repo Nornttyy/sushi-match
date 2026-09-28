@@ -1,6 +1,7 @@
 import { generateLayout, randomSource, MAX_STACK_LAYERS } from './level-generator.js';
 import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
-import { CAMPAIGN_SEALS, areSealNeighbours, getSealLayers } from './nori-seals.js';
+import { areSealNeighbours, getSealLayers } from './nori-seals.js';
+import { generateCampaignRecord } from './campaign-generator.js';
 import { campaignTimeLimit } from './timer-core.js';
 
 export const INGREDIENTS = Object.freeze({
@@ -118,9 +119,9 @@ function freezeDefinition(value) {
   return value;
 }
 
-export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(record => {
+function recordDefinition(record) {
   const { cards, solution, seals, ...info } = record;
-  const sealMap = new Map(CAMPAIGN_SEALS[info.id] || []);
+  const sealMap = new Map(seals || []);
   const tiles = cards.map(([ingredient, layer, x, y, tilt], i) => ({
     id: 'l' + info.id + '-food-' + i, ingredient, layer, x, y, tilt, active: true,
     sealed: sealMap.has(i), sealLayers: sealMap.get(i) || 0
@@ -129,7 +130,49 @@ export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(record => {
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
   return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: info.designVersion || 2, layerFoods, top: layerFoods.at(-1),
     layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) };
-}));
+}
+
+// Preserve the 48 authored opening days exactly. Later days are generated on
+// demand; don't grow a global array or keep every visited board in memory.
+export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(recordDefinition));
+const campaignCache = new Map();
+export function normalizeCampaignIndex(value) {
+  return Number.isFinite(value) ? Math.max(0, Math.min(Math.floor(value), Number.MAX_SAFE_INTEGER - 16)) : 0;
+}
+export function campaignPreviewLastPage(unlocked) {
+  return Math.floor(normalizeCampaignIndex(unlocked) / 3) + 1;
+}
+export function getCampaignLevel(index = 0) {
+  index = normalizeCampaignIndex(index);
+  if(index < LEVELS.length)return LEVELS[index];
+  if(campaignCache.has(index)){
+    const level=campaignCache.get(index);campaignCache.delete(index);campaignCache.set(index,level);return level;
+  }
+  let level=recordDefinition(generateCampaignRecord(index,RECIPES));
+  validateLevel(level);
+  if(!campaignWitnessWins(level,index)){
+    level=recordDefinition(generateCampaignRecord(index,RECIPES,{fallback:true}));validateLevel(level);
+    if(!campaignWitnessWins(level,index))throw new Error('Campaign witness failed for day '+level.id);
+  }
+  freezeDefinition(level);campaignCache.set(index,level);
+  if(campaignCache.size>12)campaignCache.delete(campaignCache.keys().next().value);
+  return level;
+}
+
+function campaignWitnessWins(level,index) {
+  // Exercise the real overlap, seven-slot rail, nori, recipe and delivery
+  // rules before this definition is shown. The temporary definition avoids
+  // recursively generating the same day while it is being verified.
+  let state={...gameForLevel(level,index),definition:level};
+  for(const id of level.solution){
+    state=advanceGameTime(state,2500).state;
+    const picked=selectTile(state,id);
+    if(!picked.changed||picked.state.status==='lost')return false;
+    state=picked.state;
+    while(canCraftActive(state))state=serveActiveCustomer(craftActiveSushi(state).state).state;
+  }
+  return state.status==='won'&&state.rail.length===0&&state.served===level.orders.length;
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -257,8 +300,8 @@ function resolveFinish(state) {
 LEVELS.forEach(validateLevel);
 
 export function createGame(levelIndex = 0) {
-  const normalizedIndex = Math.max(0, Math.min(Number.isFinite(levelIndex) ? Math.floor(levelIndex) : 0, LEVELS.length - 1));
-  const level = LEVELS[normalizedIndex];
+  const normalizedIndex = normalizeCampaignIndex(levelIndex);
+  const level = getCampaignLevel(normalizedIndex);
   return gameForLevel(level, normalizedIndex);
 }
 
@@ -304,7 +347,7 @@ export function nextEndlessWave(state) {
 }
 
 export function getLevel(state) {
-  return state.mode === 'endless' ? state.definition : LEVELS[state.levelIndex];
+  return state.definition || getCampaignLevel(state.levelIndex);
 }
 
 export function getRecipe(recipeId) {

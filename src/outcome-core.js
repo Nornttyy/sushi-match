@@ -1,4 +1,4 @@
-import { LEVELS, getLevel, getRailTiles } from './game-core.js';
+import { getLevel, getRailTiles } from './game-core.js';
 import { formatTime } from './timer-core.js';
 
 export function outcomeSummary(state) {
@@ -24,7 +24,7 @@ export function outcomeSummary(state) {
     rail: getRailTiles(state).map(t => t.ingredient),
     detail: won ? '金币已入账' : '已赚金币保留',
     primary: won ? endless ? '继续第 ' + (state.wave + 1) + ' 波'
-      : state.levelIndex < LEVELS.length - 1 ? '下一关' : '挑战无尽模式' : '再试一次',
+      : '下一关' : '再试一次',
     replay: endless ? '重新挑战' : '再玩本关',
     secondary: '返回主界面'
   };
