@@ -1,0 +1,134 @@
+/* Actual generated room art, with live controls and independently movable props. */
+.restaurant-menu { display: block; padding: 0; overflow: hidden; background: #ffe7be; }
+.restaurant-menu > * { position: absolute !important; }
+.shop-viewport { inset: 0; overflow: clip; pointer-events: none; }
+.shop-room { position: absolute; overflow: hidden; pointer-events: none; }
+.shop-room > .menu-interior { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
+.shop-room > .shop-decor-layer, .shop-room > .decor-zone { position: absolute; }
+.restaurant-menu > .menu-topline { z-index: 10; top: max(14px, env(safe-area-inset-top)); left: 5%; width: 90%; min-height: 32px; }
+.shop-wallet { display: flex; align-items: center; gap: 5px; padding: 7px 12px; border: 2px solid #fff5d7; border-radius: 24px; color: #aa6635; background: #fff1d2eb; font-size: 14px; }
+.shop-wallet small { font-size: 9px; }
+.restaurant-menu .menu-hero { top: 11%; left: 12%; width: 76%; margin: 0; z-index: 4; }
+.restaurant-menu .menu-kicker { color: #8c7553; font-size: 10px; letter-spacing: .18em; }
+.restaurant-menu .menu-hero h2 { margin-top: 7px; font-size: clamp(31px, 9vw, 45px); color: #ba6347; }
+.restaurant-menu .menu-hero h2 span { color: inherit; }
+.restaurant-menu .menu-art {
+  display: block; aspect-ratio: var(--crop-w) / var(--crop-h);
+  background-image: var(--atlas); background-repeat: no-repeat;
+  background-size: calc(125400% / var(--crop-w)) calc(125400% / var(--crop-h));
+  background-position: calc(100% * var(--crop-x) / (1254 - var(--crop-w))) calc(100% * var(--crop-y) / (1254 - var(--crop-h)));
+  pointer-events: none;
+}
+.restaurant-menu .art-plate { --atlas: url('./shop-parts-v1.png'); --crop-x: 44; --crop-y: 806; --crop-w: 537; --crop-h: 299; }
+.restaurant-menu .art-record { --atlas: url('./shop-details-v1.png'); --crop-x: 95; --crop-y: 105; --crop-w: 454; --crop-h: 450; height: auto; border-radius: 0; }
+.restaurant-menu .level-picker { z-index: 5; top: 44.5%; left: 7%; right: 7%; height: 14%; bottom: auto; display: flex; justify-content: space-around; align-items: start; }
+.restaurant-menu .menu-day { position: relative; left: auto; top: auto; width: 26%; max-width: 110px; height: 80px; transform: none; transition: transform 200ms; }
+.restaurant-menu .menu-day.is-selected { transform: translateY(-4px); }
+.restaurant-menu .menu-dish { width: 100%; height: auto; aspect-ratio: 537 / 299; margin-top: 16px; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.restaurant-menu .menu-dish .art-plate { position: absolute; inset: 0; width: 100%; }
+.restaurant-menu .menu-dish .sushi-icon { z-index: 1; width: 78%; height: auto; aspect-ratio: 1; top: -48%; }
+.restaurant-menu .menu-day-label { margin-top: 4px; padding: 3px 8px; font-size: 10px; border: 1px solid #bc9960; }
+.restaurant-menu .menu-day.is-selected .menu-day-label { color: #fff8e4; background: #b96449; border-color: #97533d; }
+.restaurant-menu .menu-day-lock { bottom: 0; right: 0; }
+.restaurant-menu .level-picker[hidden], .restaurant-menu .level-pagination[hidden], .restaurant-menu .endless-preview[hidden] { display: none; }
+.restaurant-menu .level-pagination { z-index: 6; top: 57%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; font-size: 10px; color: #754d33; }
+.level-pagination button { width: 32px; height: 28px; border: 1px solid #ba855b; border-radius: 12px; background: #fff1d0; color: #9d5a3e; font-size: 24px; line-height: 1; cursor: pointer; }
+.level-pagination button:disabled { opacity: .4; cursor: default; }
+.restaurant-menu .mode-picker { z-index: 6; top: 64%; left: 50%; transform: translateX(-50%); display: flex; padding: 3px; gap: 3px; border: 2px solid #b9875b; border-radius: 25px; background: #fff1d5; white-space: nowrap; }
+.mode-picker button { padding: 7px 14px; color: #89613d; border: 0; border-radius: 20px; background: none; font-size: 11px; font-weight: 750; cursor: pointer; }
+.mode-picker button[aria-pressed='true'] { color: #fff8e7; background: #ad684a; }
+.restaurant-menu .endless-preview { z-index: 6; top: 43%; left: 15%; width: 70%; display: flex; align-items: center; flex-direction: column; color: #7b4b30; }
+.endless-preview b { font-size: 52px; height: 51px; line-height: 1; color: #a85e40; text-shadow: 0 2px #fff1d0; }
+.endless-preview strong { font-size: 21px; }
+.endless-preview small, .endless-preview > span { font-size: 10px; margin-top: 4px; }
+.endless-preview #endless-new-button { margin-top: 5px; padding: 3px 8px; border: 0; color: #865a3e; background: #fff0d4; border-radius: 9px; font-size: 10px; cursor: pointer; }
+.restaurant-menu.is-decorating .mode-picker, .restaurant-menu.is-decorating .level-pagination, .restaurant-menu.is-decorating .endless-preview { visibility: hidden; pointer-events: none; }
+.restaurant-menu .menu-level-info { z-index: 5; top: 71.5%; left: 7%; width: 86%; margin: 0; }
+.restaurant-menu .menu-order-tag { display: block; line-height: 1.2; color: #9b7554; letter-spacing: .15em; }
+.restaurant-menu .menu-level-info strong { font-size: 21px; color: #724d35; }
+.restaurant-menu .menu-level-info small { margin-top: 0; color: #866140; font-size: 10px; }
+.menu-recipe-preview { height: 36px; display: flex; gap: 9px; justify-content: center; align-items: center; }
+.restaurant-menu .menu-recipe-preview { gap: 4px; }
+.menu-recipe-item, .menu-recipe-item .sushi-icon { display: block; width: 32px; height: 32px; }
+.restaurant-menu .menu-start-button { z-index: 6; top: 86%; left: 50%; width: 66%; min-height: 50px; padding: 10px 22px; margin: 0; transform: translateX(-50%) rotate(-1deg); font-size: 20px; }
+.restaurant-menu .menu-start-button::before, .restaurant-menu .menu-start-button::after { display: none; }
+.restaurant-menu .menu-start-button:active { transform: translateX(-50%) translateY(2px); }
+.restaurant-menu .menu-start-button:disabled { transform: translateX(-50%); font-size: 14px; }
+.restaurant-menu .menu-footer { z-index: 6; bottom: max(8px, env(safe-area-inset-bottom)); left: 5%; width: 90%; padding: 0; margin: 0; min-height: 32px; }
+.restaurant-menu .menu-footer button { color: #835d40; padding: 7px 9px; }
+.restaurant-menu #decorate-button { background: #fff3d4; border: 2px solid #c59361; border-radius: 20px; font-size: 12px; font-weight: 800; }
+.restaurant-menu .shop-decor-layer { z-index: 3; inset: 0; pointer-events: none; }
+.placed-decor { position: absolute; padding: 0; border: 0; background: none; transform: translate(-50%, -100%); pointer-events: none; touch-action: none; -webkit-user-select: none; user-select: none; }
+.placed-decor .decor-sprite { width: 100%; }
+.placed-decor.is-flipped .decor-sprite { transform: scaleX(-1); }
+.is-decorating .placed-decor { pointer-events: auto; cursor: grab; }
+.is-decorating .placed-decor.is-selected { outline: 2px dashed #537c62; outline-offset: 4px; border-radius: 8px; }
+.restaurant-menu.is-decorating .menu-hero, .restaurant-menu.is-decorating .level-picker,
+.restaurant-menu.is-decorating .menu-level-info, .restaurant-menu.is-decorating .menu-start-button,
+.restaurant-menu.is-decorating .menu-footer { visibility: hidden; pointer-events: none; }
+.restaurant-menu .decor-zone { z-index: 2; pointer-events: none; border: 2px dashed #7d9c7fa8; background: #c7e8b540; border-radius: 9px; color: #527e58; text-align: right; font-size: 9px; }
+.restaurant-menu .decor-zone[hidden] { display: none; }
+.restaurant-menu:not(.is-decorating) .decor-zone { display: none; }
+.restaurant-menu .decor-tray { z-index: 12; bottom: max(6px, env(safe-area-inset-bottom)); left: 2%; width: 96%; padding: 8px 9px 5px; color: #795338; background: #fff5df; border: 2px solid #c89565; border-radius: 16px; box-shadow: 0 -4px 14px #6d482420; }
+.decor-tray[hidden], .decor-selection[hidden] { display: none; }
+.decor-catalog[hidden] { display: none; }
+.decor-tabs { display: flex; gap: 2px; }
+.decor-tabs button[aria-pressed='true'] { background: #b66a4d; color: #fff7e7; border-color: #9a593e; }
+.theme-buy { flex-basis: 112px; }
+.theme-buy[aria-pressed='true'] { border: 2px solid #a85f43; }
+.theme-thumbnail { display: block; width: 100%; height: 43px; object-fit: cover; object-position: center 35%; border-radius: 6px; }
+.restaurant-menu[data-theme='garden'] .menu-hero h2 { color: #aa5267; }
+.restaurant-menu[data-theme='night'] .menu-hero h2 { color: #31586a; }
+.restaurant-menu .menu-level-info { padding: 3px 5px; border-radius: 12px; background: #fff0d9dc; }
+.decor-toolbar { display: flex; gap: 5px; align-items: center; min-height: 27px; }
+.decor-toolbar > strong { font-size: 12px; white-space: nowrap; }
+.decor-toolbar button { border: 1px solid #d2b286; border-radius: 8px; background: #ffebc5; color: #805738; padding: 5px 7px; font-size: 10px; cursor: pointer; }
+.decor-toolbar #decor-done { margin-left: auto; background: #b66a4d; color: #fff5dc; border-color: #9a593e; }
+.decor-selection { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+#decor-selected-name { display: none; }
+.decor-catalog { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior: contain; padding: 5px 1px; scrollbar-width: thin; }
+.decor-buy { flex: 0 0 75px; padding: 4px; border: 1px solid #d9bd91; border-radius: 10px; background: #fff9e9; color: #785334; cursor: pointer; }
+.decor-thumbnail { display: grid; place-items: center; height: 43px; }
+.decor-buy .decor-sprite { width: min(53px, calc(40px * var(--dw) / var(--dh))); height: auto; }
+.decor-sprite {
+  display: block; aspect-ratio: var(--dw) / var(--dh);
+  background-image: url('./shop-decorations-v1.png'); background-repeat: no-repeat;
+  background-size: calc(153600% / var(--dw)) calc(102400% / var(--dh));
+  background-position: calc(100% * var(--dx) / (1536 - var(--dw))) calc(100% * var(--dy) / (1024 - var(--dh)));
+  pointer-events: none;
+}
+.decor-sprite[data-decor='bonsai'] { --dx: 102; --dy: 115; --dw: 366; --dh: 383; }
+.decor-sprite[data-decor='picture'] { --dx: 1072; --dy: 152; --dw: 380; --dh: 292; }
+.decor-sprite[data-decor='cabinet'] { --dx: 73; --dy: 602; --dw: 423; --dh: 307; }
+.decor-sprite[data-decor='rug'] { --dx: 540; --dy: 651; --dw: 458; --dh: 207; }
+.decor-sprite[data-decor='board'] { --dx: 1089; --dy: 553; --dw: 369; --dh: 370; }
+.decor-buy b { display: block; margin-top: 2px; font-size: 10px; }
+.decor-buy small { display: block; margin-top: 2px; font-size: 8px; color: #a26842; white-space: nowrap; }
+.decor-buy.is-unaffordable { background: #f3ebda; }
+.decor-buy.is-unaffordable small { color: #a18c70; }
+.decor-hint { margin: 1px 0 0; min-height: 14px; font-size: 9px; color: #8e7457; }
+@media (max-height: 650px) {
+  .restaurant-menu .level-pagination { top: 57.5%; }
+  .restaurant-menu .mode-picker { top: 64%; }
+  .mode-picker button { padding: 5px 11px; font-size: 10px; }
+  .restaurant-menu .endless-preview { top: 42%; }
+  .endless-preview b { height: 35px; font-size: 37px; }
+  .endless-preview strong { font-size: 18px; }
+  .endless-preview small, .endless-preview > span { font-size: 9px; margin-top: 2px; }
+  .restaurant-menu .menu-topline { top: max(7px, env(safe-area-inset-top)); }
+  .restaurant-menu .menu-hero { top: 10%; }
+  .restaurant-menu .menu-hero h2 { font-size: 31px; margin-top: 4px; }
+  .restaurant-menu .menu-kicker { font-size: 9px; }
+  .restaurant-menu .menu-day { height: 68px; }
+  .restaurant-menu .menu-day-label { font-size: 9px; margin-top: 2px; padding: 2px 7px; }
+  .restaurant-menu .menu-level-info { top: 70.5%; }
+  .restaurant-menu .menu-level-info strong { margin-top: 1px; font-size: 17px; }
+  .restaurant-menu .menu-order-tag { font-size: 8px; }
+  .menu-recipe-preview { height: 27px; }
+  .menu-recipe-item, .menu-recipe-item .sushi-icon { width: 25px; height: 25px; }
+  .restaurant-menu .menu-start-button { top: 85.5%; min-height: 39px; padding: 6px 18px; font-size: 17px; }
+  .restaurant-menu .menu-footer { bottom: max(4px, env(safe-area-inset-bottom)); min-height: 28px; }
+  .restaurant-menu .decor-tray { padding-top: 5px; }
+  .decor-thumbnail { height: 37px; }
+  .decor-buy .decor-sprite { width: min(49px, calc(34px * var(--dw) / var(--dh))); height: auto; }
+}

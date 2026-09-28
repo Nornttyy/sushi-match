@@ -1,0 +1,23 @@
+/* Complete one-piece artwork: feedback transforms the entire portrait only. */
+.customer-portrait.cat-portrait { --cat-size: 87px; position: relative; width: var(--cat-size); height: calc(var(--cat-size) * .96); background: none; filter: none; transform-origin: center bottom; animation: none; }
+.result-guests .customer-portrait.cat-portrait { --cat-size: 72px; }
+.customer-card .customer-portrait.cat-portrait { animation: none; }
+.cat-portrait > svg { display: block; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+.customer-portrait.cat-portrait[data-state='receiving'] { animation: cat-receive-bounce 230ms ease-out; }
+.customer-portrait.cat-portrait[data-state='happy'] { animation: cat-happy-bounce 280ms ease-out; }
+.customer-portrait.cat-portrait[data-state='disappointed'] { transform: translateY(3px); opacity: .8; }
+.customer-card.is-leaving { transform: translateX(-18px) scale(.9); opacity: 0; }
+.customer-zone { overflow: hidden; }
+.customer-body { padding-top: 0; }
+.customer-rail { min-height: 86px; align-items: flex-end; }
+.customer-card.is-queued { opacity: .85; transform: scale(.88) translateY(4px); }
+.customer-card .order-bubble { left: 80%; top: 1px; width: 30px; height: 28px; border-radius: 10px 10px 10px 2px; }
+.customer-card .bubble-sushi { width: 21px; height: 21px; }
+.customer-card .order-ingredients { display: none; }
+.customer-name { position: relative; z-index: 6; margin-top: -9px; font-size: 8px; }
+.is-menu-open .cat-portrait, .result-overlay:not(.is-visible) .cat-portrait { animation-play-state: paused; }
+@keyframes cat-receive-bounce { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-3px); } }
+@keyframes cat-happy-bounce { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-4px); } }
+@media (max-height: 735px) { .customer-card .customer-portrait.cat-portrait { --cat-size: 74px; } .customer-rail { min-height: 75px; } .customer-zone { min-height: 93px; } .customer-body { padding-top: 0; } }
+@media (max-height: 600px) { .level-copy h1 { display: none; } }
+@media (prefers-reduced-motion: reduce) { .customer-portrait.cat-portrait, .customer-card { animation: none !important; transition: none !important; } }

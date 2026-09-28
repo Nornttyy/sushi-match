@@ -1,0 +1,125 @@
+/* Original generated PNGs, cropped non-destructively at their native 1254px size. */
+.menu-art {
+  display: block;
+  aspect-ratio: var(--crop-w) / var(--crop-h);
+  background-image: var(--atlas);
+  background-repeat: no-repeat;
+  background-size: calc(125400% / var(--crop-w)) calc(125400% / var(--crop-h));
+  background-position: calc(100% * var(--crop-x) / (1254 - var(--crop-w))) calc(100% * var(--crop-y) / (1254 - var(--crop-h)));
+  pointer-events: none;
+}
+
+.art-kiosk, .art-counter, .art-plate, .art-tea { --atlas: url('./shop-parts-v1.png'); }
+.art-record, .art-hearts, .art-sparkles, .art-sign { --atlas: url('./shop-details-v1.png'); }
+.art-kiosk { --crop-x: 20; --crop-y: 181; --crop-w: 588; --crop-h: 412; }
+.art-counter { --crop-x: 637; --crop-y: 323; --crop-w: 608; --crop-h: 274; }
+.art-plate { --crop-x: 44; --crop-y: 806; --crop-w: 537; --crop-h: 299; }
+.art-tea { --crop-x: 794; --crop-y: 786; --crop-w: 290; --crop-h: 327; }
+.art-record { --crop-x: 95; --crop-y: 105; --crop-w: 454; --crop-h: 450; }
+.art-hearts { --crop-x: 675; --crop-y: 186; --crop-w: 530; --crop-h: 326; }
+.art-sparkles { --crop-x: 93; --crop-y: 708; --crop-w: 447; --crop-h: 380; }
+.art-sign { --crop-x: 651; --crop-y: 735; --crop-w: 575; --crop-h: 328; }
+
+.main-menu { background: #fff7e4; }
+.menu-seaside {
+  inset: 0;
+  background: #fff7e4 url('./seaside-backdrop-v1.png') center top / 100% 100% no-repeat;
+}
+.menu-seaside::after { display: none; }
+.menu-record.menu-art { height: auto; border-radius: 0; }
+
+.menu-kiosk-art { position: absolute; top: 0; left: -5px; width: calc(100% + 10px); }
+.menu-shop-window { inset: 0 4px 39%; border: 0; background: none; box-shadow: none; }
+.menu-shop-window::after { display: none; }
+.menu-bunting { top: 25%; left: 6%; }
+.menu-chef { bottom: 10px; }
+.menu-chef .customer-portrait {
+  height: auto;
+  aspect-ratio: 1;
+  background-image: url('./cat-chef-expressions-v1.png');
+  background-size: 200% 200%;
+  background-position: 0 0;
+  animation: menu-chef-bob 3.5s ease-in-out infinite, cat-blink 5.6s step-end infinite;
+}
+.menu-chef[data-expression='happy'] .customer-portrait { background-position: 0 100%; }
+.menu-chef[data-expression='eating'] .customer-portrait { background-position: 100% 100%; }
+.menu-chef.is-happy .customer-portrait { animation: menu-chef-happy 650ms cubic-bezier(.3,.8,.25,1); }
+.menu-chef-hearts { position: absolute; width: 42px; top: 30%; left: -10px; opacity: 0; }
+.menu-chef.is-happy .menu-chef-hearts { animation: menu-hearts-rise 1.6s ease-out both; }
+.menu-tea.menu-art { width: 28px; height: auto; right: 7%; bottom: 8px; border: 0; border-radius: 0; box-shadow: none; background-color: transparent; }
+.menu-tea i { bottom: 90%; }
+
+.menu-counter {
+  height: auto;
+  aspect-ratio: 608 / 274;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.menu-counter-art { position: absolute; inset: 0; }
+.level-picker { inset: 0 0 26%; }
+.menu-day[data-slot='0'] { top: 15%; }
+.menu-day[data-slot='1'], .menu-day[data-slot='2'] { top: -8%; }
+.menu-dish, .menu-day.is-selected .menu-dish {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.menu-dish .art-plate { width: 100%; position: absolute; top: 0; left: 0; }
+.menu-dish .sushi-icon { top: -20px; z-index: 1; }
+.menu-day-label { position: relative; margin-top: 0; }
+.menu-counter-note { bottom: 7%; color: #946940; }
+
+.menu-start-button,
+.menu-start-button:active,
+.menu-start-button:disabled {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  isolation: isolate;
+}
+.menu-start-button { margin-top: 40px; }
+.menu-start-button::before, .menu-start-button::after { display: none; }
+.menu-sign-art { position: absolute; z-index: -1; inset: -27px -3px -8px; aspect-ratio: auto; }
+.menu-start-button:disabled .menu-sign-art { filter: saturate(.18); opacity: .8; }
+.menu-sign-sparkles { position: absolute; width: 34px; right: -20px; top: -19px; animation: menu-sparkle-pulse 3.4s ease-in-out infinite; }
+.menu-start-button:disabled .menu-sign-sparkles { display: none; }
+
+@keyframes cat-blink {
+  0%, 39%, 43%, 100% { background-position: 0 0; }
+  40%, 42% { background-position: 100% 0; }
+}
+@keyframes menu-hearts-rise {
+  0% { opacity: 0; transform: translateY(8px) rotate(-10deg) scale(.65); }
+  25% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-26px) rotate(8deg) scale(1.12); }
+}
+@keyframes menu-sparkle-pulse {
+  0%, 100% { transform: scale(.9) rotate(-6deg); }
+  50% { transform: scale(1.05) rotate(3deg); }
+}
+
+@media (max-height: 735px) {
+  .menu-start-button { margin-top: 31px; }
+  .menu-sign-art { top: -23px; bottom: -5px; }
+  .menu-chef .customer-portrait { height: auto; }
+  .menu-counter-note { font-size: 8px; }
+}
+@media (max-height: 650px) {
+  .menu-start-button { margin-top: 28px; }
+  .menu-sign-art { top: -22px; }
+  .menu-chef .customer-portrait { height: auto; }
+  .menu-dish, .menu-day.is-selected .menu-dish { border-width: 0; }
+  .menu-dish .sushi-icon { top: -17px; }
+  .menu-day-label { margin-top: 0; }
+  .menu-sign-sparkles { width: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-chef .customer-portrait, .menu-chef.is-happy .customer-portrait,
+  .menu-chef.is-happy .menu-chef-hearts, .menu-sign-sparkles { animation: none; }
+  .menu-chef.is-happy .menu-chef-hearts { opacity: 1; }
+}

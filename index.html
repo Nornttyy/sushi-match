@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ff8a68" />
+    <title>寿司小转台</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./assets/menu/menu-interior.css" />
+    <link rel="stylesheet" href="./feedback.css" />
+    <link rel="stylesheet" href="./cat-portrait.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-label="寿司小转台">
+      <div class="sea-bubble bubble-one" aria-hidden="true"></div>
+      <div class="sea-bubble bubble-two" aria-hidden="true"></div>
+
+      <header class="topbar">
+        <button id="restart-button" class="brand" type="button" aria-label="打开主界面">
+          <span class="brand-mark">寿</span>
+          <span>寿司小转台</span>
+        </button>
+        <div class="top-actions">
+          <div class="top-stats">
+            <span class="stat-pill">订单 <b id="target-progress">0 / 0</b></span>
+            <span class="stat-pill rail-count">备料 <b id="rail-progress">0 / 7</b></span>
+            <span class="stat-pill coin">✦ <b id="coin-count">0</b></span>
+          </div>
+          <button id="sound-button" class="sound-button" type="button" aria-pressed="true" aria-label="关闭声音">♪</button>
+        </div>
+      </header>
+
+      <section class="level-copy" aria-live="polite">
+        <p id="level-name">第 1 天 · 海边开张</p>
+      </section>
+
+      <section class="customer-zone" aria-label="顾客队列">
+        <div class="zone-heading">
+          <span>吧台顾客</span>
+          <small id="combo-count"></small>
+        </div>
+        <div id="customer-rail" class="customer-rail"></div>
+      </section>
+
+      <section class="puzzle-stage" aria-label="叠层食材台">
+        <div class="stage-top">
+          <span>食材台</span>
+          <b id="tile-count">剩 0</b>
+        </div>
+        <div id="tile-board" class="tile-board"></div>
+      </section>
+
+      <section class="recipe-desk" aria-label="当前寿司配方">
+        <div class="desk-copy">
+          <strong id="prep-title">顾客正在点单</strong>
+        </div>
+        <div class="recipe-plate">
+          <div id="recipe-slots" class="recipe-slots"></div>
+          <div id="crafted-plate" class="crafted-plate"></div>
+        </div>
+        <div id="pantry" class="pantry" aria-label="已合成备料"></div>
+        <span id="delivery-status" class="sr-only" aria-live="polite"></span>
+      </section>
+
+      <div id="message" class="sr-only" aria-live="polite"></div>
+
+      <section class="ingredient-rail-area" aria-label="七格备料栏">
+        <div class="rail-heading">
+          <span>备料栏</span>
+          <small></small>
+        </div>
+        <div id="ingredient-rail" class="ingredient-rail"></div>
+        <button id="undo-button" class="undo-button" type="button">撤回最后一格</button>
+      </section>
+
+      <section id="overlay" class="result-overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title" aria-hidden="true">
+        <div class="result-card">
+          <div id="result-confetti" class="result-confetti" aria-hidden="true"></div>
+          <span id="result-kicker" class="result-kicker">营业小结</span>
+          <div id="result-art" class="result-art" aria-hidden="true"></div>
+          <p id="overlay-title">今日寿司全送达！</p>
+          <div id="result-stats" class="result-stats"></div>
+          <small id="overlay-text"></small>
+          <div class="result-actions">
+            <button id="overlay-button" type="button">下一天</button>
+            <button id="overlay-menu-button" class="overlay-menu-button" type="button">回店布置</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="handoff-fx" class="handoff-fx" aria-hidden="true"></div>
+
+      <section id="main-menu" class="main-menu restaurant-menu is-visible" aria-label="寿司店内主菜单" aria-hidden="false">
+        <div class="shop-viewport"><div id="shop-room" class="shop-room">
+          <img class="menu-interior" src="./assets/menu/sushi-interior-v1.png" alt="" fetchpriority="high" />
+          <div id="decor-zone" class="decor-zone" aria-hidden="true" hidden></div>
+          <div id="shop-decor-layer" class="shop-decor-layer" aria-label="店内装饰"></div>
+        </div></div>
+        <div class="menu-topline">
+          <span class="shop-wallet" aria-label="可用装修金币">✦ <b id="shop-wallet">0</b><small>金币</small></span>
+          <button id="menu-sound-button" class="menu-sound-button" type="button" aria-pressed="true" aria-label="播放小店音乐">
+            <span class="menu-record menu-art art-record" aria-hidden="true"></span><span id="menu-radio-label">轻点播放</span>
+          </button>
+        </div>
+        <div class="menu-hero">
+          <h2>寿司<span>小转台</span></h2>
+        </div>
+            <div id="level-picker" class="level-picker" aria-label="吧台餐盘，选择营业日">
+              <button class="menu-day" type="button" data-level="0">
+                <span class="menu-dish"><span class="menu-art art-plate" aria-hidden="true"></span><span class="sushi-icon" data-sushi="salmon" aria-hidden="true"></span></span>
+                <span class="menu-day-label">第一天</span><span class="menu-day-lock" aria-hidden="true"></span>
+              </button>
+              <button class="menu-day" type="button" data-level="1">
+                <span class="menu-dish"><span class="menu-art art-plate" aria-hidden="true"></span><span class="sushi-icon" data-sushi="makiCucumber" aria-hidden="true"></span></span>
+                <span class="menu-day-label">第二天</span><span class="menu-day-lock" aria-hidden="true"></span>
+              </button>
+              <button class="menu-day" type="button" data-level="2">
+                <span class="menu-dish"><span class="menu-art art-plate" aria-hidden="true"></span><span class="sushi-icon" data-sushi="shrimp" aria-hidden="true"></span></span>
+                <span class="menu-day-label">第三天</span><span class="menu-day-lock" aria-hidden="true"></span>
+              </button>
+            </div>
+        <div id="level-pagination" class="level-pagination" aria-label="关卡翻页">
+          <button id="level-previous" type="button" aria-label="上一页关卡">‹</button>
+          <span id="level-page-label">1–3 / 24</span>
+          <button id="level-next" type="button" aria-label="下一页关卡">›</button>
+        </div>
+        <div id="endless-preview" class="endless-preview" hidden>
+          <b aria-hidden="true">∞</b><strong>无尽营业</strong>
+          <span id="endless-record">最高 0 波 · 最多 0 单</span>
+          <button id="endless-new-button" type="button" hidden>重新挑战</button>
+        </div>
+        <div id="mode-picker" class="mode-picker" aria-label="游戏模式">
+          <button type="button" data-mode="campaign" aria-pressed="true">闯关 · 24 天</button>
+          <button type="button" data-mode="endless" aria-pressed="false">无尽模式</button>
+        </div>
+        <div class="menu-level-info" aria-live="polite">
+          <span class="menu-order-tag">当 日 菜 单</span>
+          <strong id="menu-level-title">第 1 天 · 海边开张</strong>
+          <div id="menu-recipe-preview" class="menu-recipe-preview" aria-label="当天供应的寿司"></div>
+          <small id="menu-level-copy"></small>
+        </div>
+        <button id="menu-start-button" class="menu-start-button" type="button"><span>开始营业</span><span aria-hidden="true">→</span></button>
+        <div class="menu-footer"><button id="decorate-button" type="button">布置小店</button><button id="credits-button" type="button">制作名单</button></div>
+        <section id="decor-tray" class="decor-tray" aria-label="装饰商店与仓库" hidden>
+          <div class="decor-toolbar">
+            <div id="decor-tabs" class="decor-tabs" aria-label="装修分类"><button type="button" data-tab="decor" aria-pressed="true">摆件</button><button type="button" data-tab="themes" aria-pressed="false">主题</button></div>
+            <div id="decor-selection" class="decor-selection" hidden>
+              <span id="decor-selected-name"></span>
+              <button id="decor-flip" type="button">翻转</button>
+              <button id="decor-store" type="button">收起</button>
+            </div>
+            <button id="decor-done" type="button">完成</button>
+          </div>
+          <div id="decor-catalog" class="decor-catalog" aria-label="横滑选择装饰"></div>
+          <div id="theme-catalog" class="decor-catalog theme-catalog" aria-label="选择店铺主题" hidden></div>
+          <p id="decor-hint" class="decor-hint" aria-live="polite"></p>
+        </section>
+      </section>
+      <dialog id="credits-dialog" class="credits-dialog" aria-labelledby="credits-title">
+        <form method="dialog"><button class="credits-close" aria-label="关闭制作名单">×</button></form>
+        <h2 id="credits-title">小店制作名单</h2>
+        <p>寿司小转台 · 美术与交互</p>
+        <p class="credits-caption">音乐鸣谢</p>
+        <p><a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700069&amp;Search=Search" target="_blank" rel="noopener noreferrer">Bossa Antigua — Kevin MacLeod</a></p>
+        <small>incompetech.com · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a><br>原曲未修改，游戏中降低音量并循环播放。</small>
+      </dialog>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

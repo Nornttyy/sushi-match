@@ -1,0 +1,57 @@
+.customer-portrait.cat-rig { --cat-size: 87px; --u: calc(var(--cat-size) / 100); position: relative; width: var(--cat-size); height: calc(var(--cat-size) * .96); background: none; filter: none; animation: none; }
+.result-guests .customer-portrait.cat-rig { --cat-size: 72px; width: var(--cat-size); height: calc(var(--cat-size) * .96); }
+.customer-card .customer-portrait.cat-rig { animation: none; }
+.rig-bone, .rig-part { position: absolute; display: block; }
+.rig-part { pointer-events: none; }
+.rig-part svg { display: block; width: 100%; height: 100%; overflow: hidden; }
+.rig-torso { inset: 0; transform-origin: 50% 88%; animation: cat-breathe 2.8s var(--phase) ease-in-out infinite; }
+.rig-body-art { left: 24%; top: 44%; width: 52%; height: 46%; z-index: 2; }
+.rig-head { left: 9%; top: 5%; width: 76%; height: 59%; z-index: 5; transform-origin: 53% 88%; animation: cat-look 4s var(--phase) ease-in-out infinite; transition: transform 240ms; }
+.rig-head-art { inset: 0; }
+.rig-eyes { left: 27%; top: 45%; width: 46%; height: 24%; transform-origin: center; animation: cat-blink 4.7s var(--phase) infinite; }
+.rig-tail { left: 65%; top: 51%; width: 31%; height: 38%; z-index: 0; transform-origin: 14% 85%; animation: cat-tail 2.4s var(--phase) ease-in-out infinite; }
+.rig-tail-art { inset: 0; }
+/* Zero-sized joints are exact rotation anchors. Art overlaps each anchor;
+   the elbow stays nine design units from the shoulder at every pose/size. */
+.rig-shoulder-left, .rig-shoulder-right { top: 58%; width: 0; height: 0; z-index: 4; transform-origin: 0 0; transition: transform 220ms cubic-bezier(.2,.7,.2,1); }
+.rig-shoulder-left { left: 30%; transform: rotate(5deg); }
+.rig-shoulder-right { left: 70%; transform: rotate(-5deg); }
+.rig-arm-skin { position: absolute; left: calc(-24 * var(--u)); top: calc(-12 * var(--u)); width: calc(48 * var(--u)); height: calc(48 * var(--u)); pointer-events: none; }
+.rig-arm-fallback { left: calc(-6 * var(--u)); top: calc(-4 * var(--u)); width: calc(12 * var(--u)); height: calc(24 * var(--u)); }
+.rig-arm-fallback[hidden] { display: none; }
+.rig-elbow-left, .rig-elbow-right { left: 0; top: calc(9 * var(--u)); width: 0; height: 0; transform-origin: 0 0; transform: rotate(0deg); transition: transform 220ms cubic-bezier(.2,.7,.2,1); }
+.rig-wave { left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.rig-carried { position: absolute; z-index: 3; left: 39%; top: 62%; width: 22%; height: 22%; opacity: 0; transition: opacity 120ms; }
+.cat-rig[data-pose='receiving'] .rig-shoulder-left { transform: rotate(-38deg); }
+.cat-rig[data-pose='receiving'] .rig-shoulder-right { transform: rotate(38deg); }
+.cat-rig[data-pose='receiving'] .rig-elbow-left { transform: rotate(-42deg); }
+.cat-rig[data-pose='receiving'] .rig-elbow-right { transform: rotate(42deg); }
+.cat-rig[data-pose='receiving'] .rig-carried { opacity: 1; }
+.cat-rig[data-pose='receiving'] .rig-head { animation: none; transform: rotate(5deg) translateY(2%); }
+.cat-rig[data-pose='happy'] .rig-shoulder-right, .cat-rig[data-pose='leaving'] .rig-shoulder-right { transform: rotate(-65deg); }
+.cat-rig[data-pose='happy'] .rig-elbow-right, .cat-rig[data-pose='leaving'] .rig-elbow-right { transform: rotate(-45deg); }
+.cat-rig[data-pose='happy'] .rig-wave, .cat-rig[data-pose='leaving'] .rig-wave { animation: cat-wave 900ms ease-in-out infinite; }
+.cat-rig[data-pose='happy'] .rig-tail { animation-duration: 1.3s; }
+.cat-rig[data-pose='happy'] .rig-eyes { animation: none; transform: scaleY(.28); }
+.cat-rig[data-pose='disappointed'] .rig-head { animation: none; transform: rotate(-10deg) translateY(6%); }
+.cat-rig[data-pose='disappointed'] .rig-tail { animation: none; transform: rotate(24deg); }
+.cat-rig[data-pose='disappointed'] .rig-torso { animation: none; transform: translateY(3%); }
+.cat-rig[data-pose='disappointed'] .rig-eyes { animation: none; transform: scaleY(.65); }
+.customer-card.is-leaving { transform: translateX(-18px) scale(.9); opacity: 0; }
+.customer-zone { overflow: hidden; }
+.customer-body { padding-top: 0; }
+.customer-rail { min-height: 86px; align-items: flex-end; }
+.customer-card.is-queued { opacity: .85; transform: scale(.88) translateY(4px); }
+.customer-card .order-bubble { left: 80%; top: 1px; width: 30px; height: 28px; border-radius: 10px 10px 10px 2px; }
+.customer-card .bubble-sushi { width: 21px; height: 21px; }
+.customer-card .order-ingredients { display: none; }
+.customer-name { position: relative; z-index: 6; margin-top: -9px; font-size: 8px; }
+.is-menu-open .customer-zone *, .result-overlay:not(.is-visible) .cat-rig * { animation-play-state: paused; }
+@keyframes cat-breathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.014,1.025); } }
+@keyframes cat-look { 0%,100% { transform: rotate(-2deg); } 45%,65% { transform: rotate(3deg); } }
+@keyframes cat-tail { 0%,100% { transform: rotate(-9deg); } 50% { transform: rotate(8deg); } }
+@keyframes cat-blink { 0%,89%,96%,100% { transform: scaleY(1); } 92%,94% { transform: scaleY(.06); } }
+@keyframes cat-wave { 0%,100% { transform: rotate(0deg); } 30% { transform: rotate(9deg); } 70% { transform: rotate(-6deg); } }
+@media (max-height: 735px) { .customer-card .customer-portrait.cat-rig { --cat-size: 74px; } .customer-rail { min-height: 75px; } .customer-zone { min-height: 93px; } .customer-body { padding-top: 0; } }
+@media (max-height: 600px) { .level-copy h1 { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cat-rig *, .customer-card { animation: none !important; transition: none !important; } }
