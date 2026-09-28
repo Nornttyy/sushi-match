@@ -1,0 +1,16 @@
+.loading-screen { position: fixed; inset: 0; z-index: 1000; display: grid; place-content: center; justify-items: center; gap: 15px; padding: 28px; background: #fff2d9; color: #85593d; text-align: center; }
+.loading-screen[hidden] { display: none; }
+.loading-screen h1 { font-size: clamp(28px, 8vw, 38px); margin: 0 0 22px; color: #b9674c; letter-spacing: .04em; }
+.loading-plate { position: relative; display: grid; place-items: center; width: 208px; height: 132px; margin: 0 0 18px; }
+.loading-plate::before { content: ''; position: absolute; left: 12px; right: 12px; bottom: 2px; height: 70px; border: 3px solid #c58960; border-radius: 50%; background: #fffbec; box-shadow: inset 0 -6px #edd6b1, 0 6px #d7ae7c; }
+#loading-sushi { position: relative; border: 0; background: none; padding: 0; width: 148px; height: 113px; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#loading-sushi svg { width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+#loading-progress { width: min(240px, 75vw); height: 15px; appearance: none; border: 2px solid #c5956c; border-radius: 20px; background: #f0d9b6; overflow: hidden; }
+#loading-progress::-webkit-progress-bar { background: #f0d9b6; }
+#loading-progress::-webkit-progress-value { background: #d1815d; border-radius: 15px; }
+#loading-progress::-moz-progress-bar { background: #d1815d; border-radius: 15px; }
+.loading-label { display: flex; width: min(240px, 75vw); justify-content: space-between; font-size: 12px; }
+#loading-percent { font-variant-numeric: tabular-nums; }
+#loading-retry { margin-top: 5px; border: 2px solid #a46544; border-radius: 14px; background: #c57b57; color: #fff9e9; padding: 10px 27px; font: inherit; cursor: pointer; }
+#loading-retry[hidden] { display: none; }
+.loading-screen noscript { font-size: 13px; max-width: 260px; }

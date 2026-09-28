@@ -1,0 +1,6 @@
+{
+  "deviceOrientation": "portrait",
+  "showStatusBar": false,
+  "subpackages": [{ "name": "resources", "root": "resources/" }],
+  "networkTimeout": { "request": 15000, "downloadFile": 30000 }
+}

@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 8787",
+    "build:wechat": "node scripts/build-wechat.mjs",
     "test": "node --test",
-    "check": "node --check src/game-core.js && node --check src/campaign-layouts.js && node --check src/level-generator.js && node --check src/main.js && node --check src/sound.js && node --check src/shop-core.js && node --check src/shop-ui.js && node --check src/cat-portrait.js && node --check src/atlas-art.js && node --check src/food-art.js && node --check src/feedback.js"
+    "check": "node --check src/game-core.js && node --check src/campaign-layouts.js && node --check src/level-generator.js && node --check src/main.js && node --check src/sound.js && node --check src/shop-core.js && node --check src/shop-ui.js && node --check src/cat-portrait.js && node --check src/atlas-art.js && node --check src/food-art.js && node --check src/feedback.js && node --check src/bootstrap.js && node --check src/loading-core.js && node --check wechat/src/entry.js && node --check wechat/src/canvas-app.js && node --check wechat/src/platform.js && node --check wechat/src/session.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

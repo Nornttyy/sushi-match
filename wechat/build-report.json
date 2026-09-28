@@ -1,0 +1,24 @@
+{
+  "files": [
+    "game.json",
+    "resources/game.js",
+    "boot/sushi-atlas-v2.png",
+    "resources/assets/ingredient-atlas-v1.png",
+    "resources/assets/cat-portraits-v1.png",
+    "resources/assets/menu/sushi-interior-v1.png",
+    "resources/assets/menu/shop-parts-v1.png",
+    "resources/assets/menu/shop-details-v1.png",
+    "resources/assets/menu/shop-decorations-v1.png",
+    "resources/assets/menu/theme-garden-v1.png",
+    "resources/assets/menu/theme-night-v1.png",
+    "resources/assets/victory-platter-v1.png",
+    "resources/assets/audio/bossa-antigua.mp3",
+    "resources/assets/audio/CREDITS.md",
+    "game.js"
+  ],
+  "bytes": {
+    "main": 1116914,
+    "resources": 19772046
+  },
+  "testedOnDevice": false
+}

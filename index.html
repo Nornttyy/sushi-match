@@ -9,9 +9,20 @@
     <link rel="stylesheet" href="./assets/menu/menu-interior.css" />
     <link rel="stylesheet" href="./feedback.css" />
     <link rel="stylesheet" href="./cat-portrait.css" />
+    <link rel="stylesheet" href="./loading.css" />
   </head>
   <body>
-    <main class="game-shell" aria-label="寿司小转台">
+    <section id="loading-screen" class="loading-screen" aria-label="正在准备寿司店">
+      <h1>寿司小转台</h1>
+      <div class="loading-plate"><button id="loading-sushi" type="button" aria-label="轻点寿司弹一下">
+        <svg viewBox="41 102 324 247" aria-hidden="true"><defs><clipPath id="loading-sushi-clip"><rect x="41" y="102" width="324" height="247" /></clipPath></defs><image href="./assets/sushi-atlas-v2.png" width="1448" height="1086" clip-path="url(#loading-sushi-clip)" /></svg>
+      </button></div>
+      <progress id="loading-progress" max="100" value="0" aria-label="素材加载进度"></progress>
+      <div class="loading-label"><span id="loading-status" role="status">开店准备</span><span id="loading-percent">0%</span></div>
+      <button id="loading-retry" type="button" hidden>再试一次</button>
+      <noscript>请开启 JavaScript 后刷新页面。</noscript>
+    </section>
+    <main class="game-shell" aria-label="寿司小转台" inert>
       <div class="sea-bubble bubble-one" aria-hidden="true"></div>
       <div class="sea-bubble bubble-two" aria-hidden="true"></div>
 
@@ -165,6 +176,6 @@
         <small>incompetech.com · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a><br>原曲未修改，游戏中降低音量并循环播放。</small>
       </dialog>
     </main>
-    <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./src/bootstrap.js" onerror="document.getElementById('loading-status').textContent='没连上，再试一次'; const retry=document.getElementById('loading-retry'); retry.hidden=false; retry.onclick=()=>location.reload();"></script>
   </body>
 </html>

@@ -1,0 +1,9 @@
+{
+  "description": "寿司小转台 · 微信小游戏本地测试工程（待填写自己的 AppID）",
+  "compileType": "game",
+  "appid": "touristappid",
+  "projectname": "sushi-match-wechat",
+  "miniprogramRoot": "dist/",
+  "setting": { "es6": true, "minified": true, "urlCheck": true },
+  "packOptions": { "ignore": [], "include": [] }
+}
