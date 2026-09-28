@@ -12,13 +12,22 @@
     "resources/assets/menu/theme-garden-v1.png",
     "resources/assets/menu/theme-night-v1.png",
     "resources/assets/victory-platter-v1.png",
+    "resources/assets/menu/decor/tea-set-v1.png",
+    "resources/assets/menu/decor/condiment-rack-v1.png",
+    "resources/assets/menu/decor/flower-vase-v1.png",
+    "resources/assets/menu/decor/sushi-clock-v1.png",
+    "resources/assets/menu/decor/fish-plaque-v1.png",
+    "resources/assets/menu/decor/dish-shelf-v1.png",
+    "resources/assets/menu/decor/bamboo-pot-v1.png",
+    "resources/assets/menu/decor/cushion-bench-v1.png",
+    "resources/assets/menu/decor/tea-cart-v1.png",
     "resources/assets/audio/bossa-antigua.mp3",
     "resources/assets/audio/CREDITS.md",
     "game.js"
   ],
   "bytes": {
-    "main": 1121630,
-    "resources": 19772046
+    "main": 1124137,
+    "resources": 26670904
   },
   "testedOnDevice": false
 }

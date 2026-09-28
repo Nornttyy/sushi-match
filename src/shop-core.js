@@ -1,3 +1,5 @@
+import { DECOR_ART } from './decor-assets.js';
+
 export const SHOP_STORAGE_KEY = 'sushi-stack-shop-v1';
 
 export const DECORATIONS = Object.freeze([
@@ -5,8 +7,24 @@ export const DECORATIONS = Object.freeze([
   { id: 'picture', name: '寿司挂画', price: 320, width: 26, ratio: 292 / 380, zone: 'wall', x: 51, y: 25.5 },
   { id: 'cabinet', name: '收纳小柜', price: 720, width: 34, ratio: 307 / 423, zone: 'floor', x: 31, y: 72 },
   { id: 'rug', name: '奶油地毯', price: 460, width: 55, ratio: 207 / 458, zone: 'floor', x: 50, y: 78 },
-  { id: 'board', name: '今日菜单牌', price: 380, width: 24, ratio: 370 / 369, zone: 'floor', x: 74, y: 73 }
+  { id: 'board', name: '今日菜单牌', price: 380, width: 24, ratio: 370 / 369, zone: 'floor', x: 74, y: 73 },
+  ...[
+    { id:'tea-set', name:'茶具托盘', price:420, width:24, zone:'counter', x:51, y:34.5 },
+    { id:'condiment-rack', name:'调味小架', price:360, width:20, zone:'counter', x:73, y:34.5 },
+    { id:'flower-vase', name:'小花瓶', price:380, width:16, zone:'counter', x:49, y:34.5 },
+    { id:'sushi-clock', name:'寿司挂钟', price:560, width:20, zone:'wall', x:72, y:25 },
+    { id:'fish-plaque', name:'小鱼木牌', price:480, width:25, zone:'wall', x:46, y:24 },
+    { id:'dish-shelf', name:'碗碟壁架', price:760, width:31, zone:'wall', x:55, y:27 },
+    { id:'bamboo-pot', name:'竹叶盆栽', price:680, width:22, zone:'floor', x:75, y:76 },
+    { id:'cushion-bench', name:'软垫长凳', price:980, width:38, zone:'floor', x:38, y:77 },
+    { id:'tea-cart', name:'茶点推车', price:1180, width:25, zone:'floor', x:70, y:77 }
+  ].map(item=>({...item,ratio:DECOR_ART[item.id].crop[3]/DECOR_ART[item.id].crop[2]}))
 ]);
+
+export const DECOR_FILTERS = Object.freeze([
+  {id:'all',name:'全部'}, {id:'counter',name:'台面'}, {id:'wall',name:'墙面'}, {id:'floor',name:'地面'}
+]);
+export function getDecorCatalog(zone='all') { return DECORATIONS.filter(item=>zone==='all'||item.zone===zone); }
 
 export const SHOP_THEMES = Object.freeze([
   { id: 'cream', name: '奶油原木', price: 0, image: 'sushi-interior-v1.png' },
@@ -14,6 +32,16 @@ export const SHOP_THEMES = Object.freeze([
   { id: 'night', name: '月港夜食', price: 2200, image: 'theme-night-v1.png' }
 ]);
 export const ROOM_RATIO = 4 / 7;
+// Preserve the same room coordinates while keeping all mounting surfaces
+// between the wallet and the editor toolbar on short phone screens.
+export function getShopRoomFrame(width, height, toolbarTop=null, safeTop=52) {
+  let w=Math.max(width,height*ROOM_RATIO), h=w/ROOM_RATIO, y=(height-h)/2;
+  if(toolbarTop!==null && y+h*.79>toolbarTop-8){
+    h=Math.min(h,Math.max(1,(toolbarTop-8-safeTop)/.68));
+    w=h*ROOM_RATIO;y=toolbarTop-8-h*.79;
+  }
+  return {x:(width-w)/2,y,w,h};
+}
 export function getTheme(id) { return SHOP_THEMES.find(t => t.id === id); }
 
 export const DECOR_ZONES = Object.freeze({

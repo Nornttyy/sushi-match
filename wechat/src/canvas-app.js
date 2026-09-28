@@ -1,14 +1,14 @@
 import { LEVELS, RECIPES, getVisibleTiles, getVisibleCustomers, getRailTiles, getRecipeSlots } from '../../src/game-core.js';
 import { FOOD_CROPS, FOOD_MASKS } from '../../src/food-art.js';
 import { CAT_CROPS } from '../../src/cat-portrait.js';
-import { DECORATIONS, SHOP_THEMES, ROOM_RATIO, getDecoration, getTheme } from '../../src/shop-core.js';
+import { SHOP_THEMES, getDecoration, getTheme, DECOR_FILTERS, getDecorCatalog, getShopRoomFrame } from '../../src/shop-core.js';
+import { DECOR_ART } from '../../src/decor-assets.js';
 import { GAME_IMAGES } from '../../src/asset-manifest.js';
 import { loadingSnapshot, createTaskCache } from '../../src/loading-core.js';
 import { MOTION, jellyPose, flightPose } from '../../src/motion-core.js';
 import { Session } from './session.js';
 
 const W = 390;
-const DECOR_CROPS = { bonsai: [102,115,366,383], picture: [1072,152,380,292], cabinet: [73,602,423,307], rug: [540,651,458,207], board: [1089,553,369,370] };
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
 
 export class CanvasApp {
@@ -19,6 +19,7 @@ export class CanvasApp {
     this.loading = true; this.loadError = false; this.busyLoading = false; this.startedAt = platform.now();
     this.loaded = 0; this.total = GAME_IMAGES.length + 1; this.packageProgress = 0;
     this.page = Math.floor(this.session.selected / 3); this.tab = 'decor'; this.selectedDecor = null; this.previewTheme = null;
+    this.decorCategory = 'all'; this.decorPage = 0;
     this.hidden = false; this.lastFrame = platform.now(); this.message = ''; this.messageUntil = 0;
     platform.sound(!this.session.muted); this.resize();
     platform.bind({ down: p => this.down(p), move: p => this.move(p), up: p => this.up(p), cancel: () => { this.press = null; this.dirty = true; }, resize: () => this.resize(), hide: () => this.hide(), show: () => this.show() });
@@ -180,13 +181,14 @@ export class CanvasApp {
     if(this.loadError)this.button('再试一次',125,mid+148,140,40,()=>void this.load(),{active:true});
   }
   drawRoom() {
-    const width=Math.max(W,this.H*ROOM_RATIO),height=width/ROOM_RATIO;
-    this.room={x:(W-width)/2,y:(this.H-height)/2,w:width,h:height};const r=this.room;
+    const toolbarTop=this.session.scene==='shop'?this.H-this.bottom-(this.tab==='decor'?184:155):null;
+    this.room=getShopRoomFrame(W,this.H,toolbarTop,this.top+48);const r=this.room;
+    this.box(0,0,W,this.H,'#ffe7be',0);
     this.sprite('menu/'+getTheme(this.previewTheme||this.session.shop.theme).image,null,r.x,r.y,r.w,r.h);
     const placements=[...this.session.shop.placements].sort((a,b)=>a.id==='rug'?-1:b.id==='rug'?1:a.y-b.y);
     for(const p of placements){const item=getDecoration(p.id),w=r.w*item.width/100,h=w*item.ratio,x=r.x+r.w*p.x/100-w/2,y=r.y+r.h*p.y/100-h;
       if(this.session.scene==='shop'&&this.selectedDecor===p.id){this.ctx.strokeStyle='#628966';this.ctx.lineWidth=2;this.ctx.strokeRect(x-3,y-3,w+6,h+6);}
-      this.sprite('menu/shop-decorations-v1.png',DECOR_CROPS[p.id],x,y,w,h,null,p.flipped);
+      const art=DECOR_ART[p.id];this.sprite(art.file,art.crop,x,y,w,h,null,p.flipped);
       if(this.session.scene==='shop')this.hit(x,y,w,h,()=>{this.selectedDecor=p.id;},{decor:p.id});
     }
   }
@@ -219,9 +221,9 @@ export class CanvasApp {
     if(this.credits){this.hits=[];this.box(25,H/2-160,340,300,'#fff5df',20,'#c5956c');this.text('小店制作名单',195,H/2-115,23);this.text('Bossa Antigua · Kevin MacLeod',195,H/2-55,15);this.text('incompetech.com · CC BY 4.0',195,H/2-20,14);this.text('原曲未修改，降低音量并循环播放',195,H/2+15,12);this.button('关闭',125,H/2+65,140,40,()=>{this.credits=false;});}
   }
   drawShop() {
-    const s=this.session,H=this.H-this.bottom,y=H-155;
+    const s=this.session,H=this.H-this.bottom,y=H-(this.tab==='decor'?184:155);
     // Room remains connected to the furniture; catalog is only a bottom toolbar.
-    this.box(8,y,374,148,'#fff5df',16,'#c5956c');
+    this.box(8,y,374,H-y-7,'#fff5df',16,'#c5956c');
     this.button('摆件',18,y+9,58,29,()=>{this.tab='decor';},{active:this.tab==='decor',size:12});
     this.button('主题',81,y+9,58,29,()=>{this.tab='themes';},{active:this.tab==='themes',size:12});
     if(this.selectedDecor&&this.tab==='decor'){
@@ -233,11 +235,18 @@ export class CanvasApp {
       const x=18+i*120;this.sprite('menu/'+theme.image,null,x,y+43,111,56);
       this.button(theme.name,x,y+104,111,28,()=>{if(this.previewTheme!==theme.id){this.previewTheme=theme.id;return;}const r=s.theme(theme.id);if(!r.changed&&r.reason==='coins')this.notice('金币不足');else this.previewTheme=null;},{active:(this.previewTheme||s.shop.theme)===theme.id,size:11});
       this.text(s.shop.ownedThemes.includes(theme.id)?'已拥有':theme.price+' 金币',x+55,y+96,10);
-    });else DECORATIONS.forEach((item,i)=>{
-      const x=16+i*73;this.sprite('menu/shop-decorations-v1.png',DECOR_CROPS[item.id],x+8,y+45,54,46);
-      this.button(item.name,x,y+96,68,27,()=>{const r=s.buy(item.id);if(r.changed||r.reason==='placed')this.selectedDecor=item.id;else this.notice(r.reason==='coins'?'金币不足':'暂时没有合适位置');},{size:10});
-      this.text(s.shop.owned.includes(item.id)?'已拥有':item.price+' 金币',x+34,y+134,10);
-    });
+    });else {
+      DECOR_FILTERS.forEach((group,i)=>this.button(group.name,18+i*50,y+43,44,23,()=>{this.decorCategory=group.id;this.decorPage=0;},{active:this.decorCategory===group.id,size:10}));
+      const items=getDecorCatalog(this.decorCategory),pages=Math.ceil(items.length/5);this.decorPage=Math.min(this.decorPage,pages-1);
+      this.button('‹',255,y+43,27,23,()=>{this.decorPage--;},{disabled:this.decorPage===0,size:12});
+      this.text((this.decorPage+1)+'/'+pages,309,y+55,10);
+      this.button('›',338,y+43,27,23,()=>{this.decorPage++;},{disabled:this.decorPage===pages-1,size:12});
+      items.slice(this.decorPage*5,this.decorPage*5+5).forEach((item,i)=>{
+        const x=16+i*73,art=DECOR_ART[item.id];this.sprite(art.file,art.crop,x+8,y+70,54,46);
+        this.button(item.name,x,y+125,68,27,()=>{const r=s.buy(item.id);if(r.changed||r.reason==='placed')this.selectedDecor=item.id;else this.notice(r.reason==='coins'?'金币不足':'暂时没有合适位置');},{size:10});
+        this.text(s.shop.owned.includes(item.id)?'已拥有':item.price+' 金币',x+34,y+164,10);
+      });
+    }
   }
   drawGame() {
     const s=this.session,g=s.game,H=this.H-this.bottom,top=this.top;this.box(0,0,W,this.H,'#93ded8',0);

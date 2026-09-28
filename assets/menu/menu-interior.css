@@ -72,6 +72,10 @@
 .restaurant-menu .decor-tray { z-index: 12; bottom: max(6px, env(safe-area-inset-bottom)); left: 2%; width: 96%; padding: 8px 9px 5px; color: #795338; background: #fff5df; border: 2px solid #c89565; border-radius: 16px; box-shadow: 0 -4px 14px #6d482420; }
 .decor-tray[hidden], .decor-selection[hidden] { display: none; }
 .decor-catalog[hidden] { display: none; }
+.decor-filters[hidden] { display:none; }
+.decor-filters { display:flex; gap:10px; margin:5px 0 0; }
+.decor-filters button { padding:4px 5px; border:0; border-bottom:2px solid transparent; background:none; color:#997c60; font-size:11px; cursor:pointer; }
+.decor-filters button[aria-pressed='true'] { color:#a85f43; border-bottom-color:#b66a4d; font-weight:800; }
 .decor-tabs { display: flex; gap: 2px; }
 .decor-tabs button[aria-pressed='true'] { background: #b66a4d; color: #fff7e7; border-color: #9a593e; }
 .theme-buy { flex-basis: 112px; }
@@ -102,6 +106,8 @@
 .decor-sprite[data-decor='cabinet'] { --dx: 73; --dy: 602; --dw: 423; --dh: 307; }
 .decor-sprite[data-decor='rug'] { --dx: 540; --dy: 651; --dw: 458; --dh: 207; }
 .decor-sprite[data-decor='board'] { --dx: 1089; --dy: 553; --dw: 369; --dh: 370; }
+.decor-sprite.is-cropped { background:none; }
+.decor-sprite.is-cropped > svg { display:block; width:100%; height:100%; overflow:hidden; }
 .decor-buy b { display: block; margin-top: 2px; font-size: 10px; }
 .decor-buy small { display: block; margin-top: 2px; font-size: 8px; color: #a26842; white-space: nowrap; }
 .decor-buy.is-unaffordable { background: #f3ebda; }

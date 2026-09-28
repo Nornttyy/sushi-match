@@ -4,6 +4,7 @@ import { build } from 'esbuild';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { createWechatPlatform } from '../wechat/src/platform.js';
+import { GAME_IMAGES } from '../src/asset-manifest.js';
 
 test('wx adapter uses platform storage/audio and pauses foreground-only work',async()=>{
   const listeners={},calls=[],data=new Map();let audio;
@@ -35,7 +36,7 @@ test('actual bundled entry boots with only wx and Canvas, without window or docu
     onTouchStart:fn=>listeners.down=fn,onTouchMove(){},onTouchEnd:fn=>listeners.up=fn,onTouchCancel(){},onHide(){},onShow(){},onWindowResize(){}};
   vm.runInNewContext(code,{wx:api,requestAnimationFrame:fn=>queue.push(fn),cancelAnimationFrame(){},setTimeout,clearTimeout,console},{timeout:1000});
   await new Promise(resolve=>setTimeout(resolve,15));
-  assert.equal(canvas.width,780);assert.ok(text.includes('寿司小转台'));assert.equal(requests.length,10);
+  assert.equal(canvas.width,780);assert.ok(text.includes('寿司小转台'));assert.equal(requests.length,GAME_IMAGES.length);
   assert.ok(requests.every(path=>path.startsWith('boot/')||path.startsWith('resources/assets/')));
   assert.equal(typeof listeners.down,'function');assert.equal(typeof listeners.up,'function');
   const config=JSON.parse(readFileSync(new URL('../wechat/project.config.json',import.meta.url)));assert.equal(config.compileType,'game');assert.equal(config.appid,'touristappid');

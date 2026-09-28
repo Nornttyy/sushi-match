@@ -1,8 +1,10 @@
 import {
-  DECORATIONS, DECOR_ZONES, SHOP_STORAGE_KEY, createShop, restoreShop,
+  DECOR_ZONES, SHOP_STORAGE_KEY, createShop, restoreShop,
   getDecoration, earnShopCoins, purchaseAndPlace, moveDecoration, flipDecoration, storeDecoration,
-  SHOP_THEMES, ROOM_RATIO, getTheme, purchaseTheme
+  SHOP_THEMES, getTheme, purchaseTheme, DECOR_FILTERS, getDecorCatalog, getShopRoomFrame
 } from './shop-core.js';
+import { DECOR_ART } from './decor-assets.js';
+import { clippedAtlas } from './atlas-art.js';
 
 export function mountShop({ root, onSound = () => {} }) {
   const layer = root.querySelector('#shop-decor-layer');
@@ -18,6 +20,8 @@ export function mountShop({ root, onSound = () => {} }) {
   const roomImage = room.querySelector('.menu-interior');
   const themes = root.querySelector('#theme-catalog');
   const tabs = root.querySelector('#decor-tabs');
+  const filters = root.querySelector('#decor-filters');
+  let category = 'all';
   let tab = 'decor';
   let previewTheme = null;
   const normalControls = [...root.querySelectorAll('.menu-hero, #level-picker, #level-pagination, #endless-preview, #mode-picker, .menu-level-info, #menu-start-button, .menu-footer')];
@@ -40,12 +44,12 @@ export function mountShop({ root, onSound = () => {} }) {
   }
 
   function fitRoom() {
-    const width = Math.max(root.clientWidth, root.clientHeight * ROOM_RATIO);
-    const height = width / ROOM_RATIO;
-    Object.assign(room.style, { width: width + 'px', height: height + 'px',
-      left: (root.clientWidth - width) / 2 + 'px', top: (root.clientHeight - height) / 2 + 'px' });
+    const toolbarTop=editing ? tray.getBoundingClientRect().top-root.getBoundingClientRect().top : null;
+    const r=getShopRoomFrame(root.clientWidth,root.clientHeight,toolbarTop);
+    Object.assign(room.style, {width:r.w+'px',height:r.h+'px',left:r.x+'px',top:r.y+'px'});
   }
   new ResizeObserver(fitRoom).observe(root);
+  new ResizeObserver(fitRoom).observe(tray);
   fitRoom();
 
   function renderThemes() {
@@ -66,6 +70,7 @@ export function mountShop({ root, onSound = () => {} }) {
       card.append(thumb, name, price); themes.append(card);
     }
     catalog.hidden = tab !== 'decor'; themes.hidden = tab !== 'themes';
+    filters.hidden = tab !== 'decor';
     tabs.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === tab)));
   }
 
@@ -74,6 +79,10 @@ export function mountShop({ root, onSound = () => {} }) {
     image.className = 'decor-sprite';
     image.dataset.decor = id;
     image.setAttribute('aria-hidden', 'true');
+    const art = DECOR_ART[id];
+    image.classList.add('is-cropped');
+    image.style.setProperty('--dw',String(art.crop[2]));image.style.setProperty('--dh',String(art.crop[3]));
+    image.append(clippedAtlas({...art,file:'./assets/'+art.file},art.crop));
     return image;
   }
 
@@ -110,6 +119,7 @@ export function mountShop({ root, onSound = () => {} }) {
   }
 
   function render() {
+    const catalogScroll = catalog.scrollLeft;
     wallet.textContent = String(state.coins);
     renderThemes();
     layer.replaceChildren();
@@ -125,7 +135,12 @@ export function mountShop({ root, onSound = () => {} }) {
       layer.append(button);
     }
     catalog.replaceChildren();
-    for (const item of DECORATIONS) {
+    filters.replaceChildren();
+    for(const group of DECOR_FILTERS){
+      const button=document.createElement('button');button.type='button';button.dataset.category=group.id;
+      button.textContent=group.name;button.setAttribute('aria-pressed',String(category===group.id));filters.append(button);
+    }
+    for (const item of getDecorCatalog(category)) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'decor-buy';
@@ -144,7 +159,9 @@ export function mountShop({ root, onSound = () => {} }) {
       button.setAttribute('aria-label', item.name + '，' + price.textContent);
       catalog.append(button);
     }
+    catalog.scrollLeft = catalogScroll;
     updateSelection();
+    fitRoom();
   }
 
   function finishDrag(cancel = false) {
@@ -187,6 +204,10 @@ export function mountShop({ root, onSound = () => {} }) {
     tab = button.dataset.tab; selected = null; previewTheme = null;
     render();
     hint.textContent = '';
+  });
+  filters.addEventListener('click', event=>{
+    const button=event.target.closest('[data-category]');if(!button||!editing)return;
+    category=button.dataset.category;catalog.scrollLeft=0;render();hint.textContent='';
   });
   themes.addEventListener('click', event => {
     const button = event.target.closest('[data-theme-id]');
