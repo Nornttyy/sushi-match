@@ -9,7 +9,6 @@
 .restaurant-menu .business-page-title { top:13%; width:100%; margin:0; text-align:center; font-size:28px; color:#a45e42; }
 .restaurant-menu .home-page-actions { bottom:85px; left:12%; width:76%; }
 .home-business-button { display:flex; justify-content:space-between; align-items:center; width:100%; min-height:48px; padding:10px 18px; border:2px solid #a96545; border-radius:14px; background:#c47955; box-shadow:0 4px 0 #91563d; color:#fff8e6; font-size:17px; font-weight:800; cursor:pointer; }
-.restaurant-menu .home-page-actions .menu-footer { position:relative; bottom:auto; left:auto; width:100%; display:flex; justify-content:space-between; margin-top:12px; }
 .restaurant-menu .menu-book-navigation { z-index:25; bottom:max(9px,env(safe-area-inset-bottom)); left:4%; width:92%; height:47px; display:grid; grid-template-columns:32px repeat(3,minmax(0,1fr)) 32px; align-items:center; gap:3px; padding:5px; border:2px solid #bd9064; border-radius:8px 12px 12px 8px; background:#fff6df; box-shadow:0 3px 0 #d7b98e; }
 .menu-book-navigation button { min-width:0; height:32px; border:0; border-radius:7px; background:transparent; color:#916247; font-size:13px; font-weight:750; cursor:pointer; }
 .menu-book-navigation button[aria-current='page'] { background:#bd7754; color:#fff9e8; }
@@ -72,7 +71,6 @@
 .restaurant-menu .menu-start-button:disabled { transform: translateX(-50%); font-size: 14px; }
 .restaurant-menu .menu-footer { z-index: 6; bottom: max(8px, env(safe-area-inset-bottom)); left: 5%; width: 90%; padding: 0; margin: 0; min-height: 32px; }
 .restaurant-menu .menu-footer button { color: #835d40; padding: 7px 9px; }
-.restaurant-menu #decorate-button { background: #fff3d4; border: 2px solid #c59361; border-radius: 20px; font-size: 12px; font-weight: 800; }
 .restaurant-menu .shop-decor-layer { z-index: 3; inset: 0; pointer-events: none; }
 .placed-decor { position: absolute; padding: 0; border: 0; background: none; transform: translate(-50%, -100%); pointer-events: none; touch-action: none; -webkit-user-select: none; user-select: none; }
 .placed-decor .decor-sprite { width: 100%; }

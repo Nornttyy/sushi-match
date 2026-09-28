@@ -1097,6 +1097,8 @@ button {
 .credits-dialog .credits-caption { margin-top: 22px; font-size: 10px; color: #a58463; }
 .credits-dialog small { font-size: 10px; line-height: 1.8; color: #9e8166; }
 .credits-dialog a { color: #857348; text-underline-offset: 3px; }
+.settings-sound-toggle { width:100%; margin:8px 0 18px; padding:10px; border:1px solid #bf9067; border-radius:10px; color:#80553d; background:#ffebc5; font-size:15px; cursor:pointer; }
+.music-credits summary { width:fit-content; font-size:11px; color:#9e8166; cursor:pointer; }
 .credits-close { position: absolute; top: 7px; right: 9px; padding: 3px 9px; font-size: 25px; color: #a48263; border: 0; background: none; cursor: pointer; }
 .main-menu button:focus-visible, .credits-dialog button:focus-visible, .credits-dialog a:focus-visible { outline: 3px solid #537f71; outline-offset: 4px; }
 

@@ -76,8 +76,8 @@ const levelNext = document.querySelector('#level-next');
 const endlessPreview = document.querySelector('#endless-preview');
 const endlessRecord = document.querySelector('#endless-record');
 const endlessNewButton = document.querySelector('#endless-new-button');
-const creditsButton = document.querySelector('#credits-button');
 const creditsDialog = document.querySelector('#credits-dialog');
+const settingsSoundToggle = document.querySelector('#settings-sound-toggle');
 
 function readStoredLevel(key, fallback = 0) {
   try {
@@ -160,8 +160,9 @@ function syncSoundButtons() {
 
 function syncMenuMusic(playing) {
   mainMenu.classList.toggle('is-music-playing', playing);
-  menuSoundButton.setAttribute('aria-pressed', String(sounds.enabled));
-  menuSoundButton.setAttribute('aria-label', playing ? '关闭声音' : '播放小店音乐');
+  settingsSoundToggle.setAttribute('aria-pressed', String(sounds.enabled));
+  settingsSoundToggle.textContent=sounds.enabled?'声音：开':'声音：关';
+  settingsSoundToggle.setAttribute('aria-label',sounds.enabled?'关闭声音':'开启声音');
   menuRadioLabel.textContent = !sounds.enabled ? '音乐已关' : playing ? '小店电台' : '轻点播放';
 }
 
@@ -680,12 +681,10 @@ overlayMenuButton.addEventListener('click', () => {
 });
 soundButton.addEventListener('click', toggleSound);
 menuSoundButton.addEventListener('click', () => {
-  if (sounds.enabled && !sounds.isBgmPlaying()) {
-    void sounds.startBgm();
-  } else {
-    toggleSound();
-  }
+  if(sounds.enabled&&!sounds.isBgmPlaying())void sounds.startBgm();
+  creditsDialog.showModal();
 });
+settingsSoundToggle.addEventListener('click',toggleSound);
 levelPicker.addEventListener('click', (event) => {
   const day = event.target.closest('.menu-day');
   if (!day) {
@@ -715,7 +714,6 @@ endlessNewButton.addEventListener('click', () => {
   endlessSession = null;
   startSelectedLevel();
 });
-creditsButton.addEventListener('click', () => creditsDialog.showModal());
 creditsDialog.addEventListener('click', (event) => {
   if (event.target !== creditsDialog) return;
   const box = creditsDialog.getBoundingClientRect();

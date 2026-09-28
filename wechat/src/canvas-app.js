@@ -75,7 +75,7 @@ export class CanvasApp {
   down(raw) {
     const p = this.point(raw); this.press = { ...p, target: [...this.hits].reverse().find(hit => inside(p, hit)), moved: false };
     const overCatalog=this.session.scene==='shop'&&p.y>=this.H-this.bottom-71-(this.tab==='decor'?184:155);
-    this.press.bookSwipe=!this.loading&&['menu','shop'].includes(this.session.scene)&&!this.credits&&!this.press.target&&!overCatalog;
+    this.press.bookSwipe=!this.loading&&['menu','shop'].includes(this.session.scene)&&!this.soundSettings&&!this.press.target&&!overCatalog;
     this.dirty = true;
     if (this.press.target?.decor) { this.selectedDecor = this.press.target.decor; this.dirty = true; }
   }
@@ -245,17 +245,22 @@ export class CanvasApp {
     const s=this.session,H=this.H,bottom=this.bottom;
     if(s.scene==='shop'||s.menuPage!=='business')this.drawRoom();else this.box(0,0,W,H,'#ffe7be',0);
     this.box(16,this.top+10,100,32,'#fff3daeb',17);this.text(s.shop.coins+' 金币',66,this.top+26,13);
-    this.button(s.muted?'声音关':'声音开',292,this.top+10,82,32,()=>s.toggleSound(),{size:12});
+    this.button('声音设置',292,this.top+10,82,32,()=>{this.soundSettings=true;this.musicCredits=false;},{size:12});
     if(s.scene==='shop')this.drawShop();
     else if(s.menuPage==='business')this.drawBusinessPage();
     else{
       this.text('寿司小转台',195,Math.max(this.top+82,H*.15),35,'#b76348');
-      this.button('翻开营业手册 →',64,H-bottom-174,262,48,()=>this.showMenuPage('business'),{active:true,size:18});
-      this.button('布置小店',57,H-bottom-114,111,30,()=>this.showMenuPage('decor'),{size:12});
-      this.button('制作名单',231,H-bottom-114,99,30,()=>{this.credits=true;},{size:11});
+      this.button('翻开营业手册 →',64,H-bottom-130,262,48,()=>this.showMenuPage('business'),{active:true,size:18});
     }
     this.drawMenuNavigation();
-    if(this.credits){this.hits=[];this.box(25,H/2-160,340,300,'#fff5df',20,'#c5956c');this.text('小店制作名单',195,H/2-115,23);this.text('Bossa Antigua · Kevin MacLeod',195,H/2-55,15);this.text('incompetech.com · CC BY 4.0',195,H/2-20,14);this.text('原曲未修改，降低音量并循环播放',195,H/2+15,12);this.button('关闭',125,H/2+65,140,40,()=>{this.credits=false;});}
+    if(this.soundSettings){
+      this.hits=[];this.box(0,0,W,H,'#543b2b66',0);this.box(25,H/2-172,340,344,'#fff5df',20,'#c5956c');
+      this.text('声音设置',195,H/2-135,23);
+      this.button(s.muted?'声音：关':'声音：开',75,H/2-99,240,39,()=>s.toggleSound(),{active:!s.muted,size:15});
+      this.button('音乐鸣谢',145,H/2-47,100,27,()=>{this.musicCredits=!this.musicCredits;},{size:11});
+      if(this.musicCredits){this.text('Bossa Antigua · Kevin MacLeod',195,H/2+1,14);this.text('incompetech.com · CC BY 4.0',195,H/2+26,12);this.text('原曲未修改，降低音量并循环播放',195,H/2+51,11);}
+      this.button('关闭',125,H/2+105,140,39,()=>{this.soundSettings=false;});
+    }
   }
   drawShop() {
     const s=this.session,H=this.H-this.bottom-71,y=H-(this.tab==='decor'?184:155);

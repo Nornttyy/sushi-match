@@ -27,11 +27,28 @@ test('native page changes separate controls and preserve wallet, layout and leve
   const {app,text}=harness(),shop=JSON.stringify(app.session.shop);
   const labels=()=>app.hits.filter(h=>h.key).map(h=>h.key.split(':')[1]);
   assert.ok(labels().includes('翻开营业手册 →'));assert.ok(!labels().includes('开始营业'));
+  assert.ok(!labels().includes('布置小店'));assert.ok(!labels().includes('制作名单'));
   app.showMenuPage('business');assert.ok(labels().includes('开始营业'));assert.ok(!labels().includes('小盆栽'));
   app.session.selected=2;app.showMenuPage('decor');assert.ok(labels().includes('小盆栽'));assert.ok(!labels().includes('开始营业'));
   app.showMenuPage('home');assert.equal(app.session.selected,2);assert.equal(JSON.stringify(app.session.shop),shop);
   app.session.menu();assert.equal(app.session.menuPage,'home');
   assert.ok(!text.includes(undefined));
+});
+test('native music attribution is reachable from sound settings without home shortcuts',()=>{
+  const {app,text}=harness();
+  const click=label=>{
+    const hit=app.hits.find(h=>h.key?.startsWith('button:'+label+':'));
+    assert.ok(hit,label);hit.action();app.render(0);
+  };
+  click('声音设置');assert.equal(app.soundSettings,true);
+  click('声音：开');assert.equal(app.session.muted,true);
+  click('音乐鸣谢');assert.ok(text.includes('Bossa Antigua · Kevin MacLeod'));
+  assert.ok(text.includes('incompetech.com · CC BY 4.0'));
+  app.down({x:300,y:420,id:1});app.move({x:150,y:420,id:1});app.up({x:100,y:420,id:1});
+  assert.equal(app.session.menuPage,'home');
+  click('声音：关');assert.equal(app.session.muted,false);
+  click('关闭');assert.equal(app.soundSettings,false);
+  assert.equal(app.session.menuPage,'home');
 });
 test('native background swipe flips main pages but a decoration drag does not',()=>{
   const {app}=harness();

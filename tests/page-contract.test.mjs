@@ -80,7 +80,10 @@ test('the menu is an indoor shop without the old cat or feeding interaction', ()
   const menu = html.split('id="main-menu"')[1].split('<dialog')[0];
   assert.match(menu, /寿司店翻页主菜单/);
   assert.match(menu, /menu-recipe-preview/);
-  assert.match(menu, /decorate-button/);
+  assert.match(menu, /data-menu-target="decor"/);
+  assert.doesNotMatch(html, /decorate-button|credits-button|布置小店|制作名单/);
+  assert.match(html, /settings-sound-toggle/);
+  assert.match(html, /<summary>音乐鸣谢<\/summary>/);
   assert.doesNotMatch(menu, /menu-chef|猫猫|customer-portrait|menu-seaside/);
   assert.doesNotMatch(main, /feedMenuChef|reactMenuChef|clearMenuTreat/);
   assert.match(main, /shop\.award\(result\.reward\)/);

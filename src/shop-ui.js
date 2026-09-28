@@ -14,7 +14,7 @@ export function mountShop({ root, onSound = () => {}, onEditingChange = () => {}
   const hint = root.querySelector('#decor-hint');
   const selection = root.querySelector('#decor-selection');
   const done = root.querySelector('#decor-done');
-  const edit = root.querySelector('#decorate-button');
+  const homeButton = root.querySelector('#home-business-button');
   const zone = root.querySelector('#decor-zone');
   const room = root.querySelector('#shop-room');
   const roomImage = room.querySelector('.menu-interior');
@@ -24,7 +24,7 @@ export function mountShop({ root, onSound = () => {}, onEditingChange = () => {}
   let category = 'all';
   let tab = 'decor';
   let previewTheme = null;
-  const normalControls = [...root.querySelectorAll('.menu-hero, #level-picker, #level-pagination, #endless-preview, #mode-picker, .menu-level-info, #menu-start-button, .menu-footer')];
+  const normalControls = [...root.querySelectorAll('.menu-hero, #level-picker, #level-pagination, #endless-preview, #mode-picker, .menu-level-info, #menu-start-button')];
   let state = createShop();
   let editing = false;
   let selected = null;
@@ -178,7 +178,6 @@ export function mountShop({ root, onSound = () => {}, onEditingChange = () => {}
     root.classList.add('is-decorating');
     tray.hidden = false;
     normalControls.forEach(el => { el.inert = true; });
-    edit.hidden = true;
     hint.textContent = '';
     render();
     if(notify)onEditingChange(true);
@@ -194,12 +193,10 @@ export function mountShop({ root, onSound = () => {}, onEditingChange = () => {}
     root.classList.remove('is-decorating');
     tray.hidden = true;
     normalControls.forEach(el => { el.inert = false; });
-    edit.hidden = false;
     render();
-    if(notify){onEditingChange(false);edit.focus({ preventScroll: true });}
+    if(notify){onEditingChange(false);homeButton.focus({ preventScroll: true });}
   }
 
-  edit.addEventListener('click', openEditor);
   done.addEventListener('click', closeEditor);
   tabs.addEventListener('click', event => {
     const button = event.target.closest('[data-tab]');

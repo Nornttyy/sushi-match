@@ -110,7 +110,7 @@
         </div></div>
         <div class="menu-topline">
           <span class="shop-wallet" aria-label="可用装修金币">✦ <b id="shop-wallet">0</b><small>金币</small></span>
-          <button id="menu-sound-button" class="menu-sound-button" type="button" aria-pressed="true" aria-label="播放小店音乐">
+          <button id="menu-sound-button" class="menu-sound-button" type="button" aria-haspopup="dialog" aria-controls="credits-dialog" aria-label="声音设置">
             <span class="menu-record menu-art art-record" aria-hidden="true"></span><span id="menu-radio-label">轻点播放</span>
           </button>
         </div>
@@ -120,7 +120,6 @@
         </div>
         <div class="home-page-actions">
           <button id="home-business-button" class="home-business-button" type="button">翻开营业手册 <span aria-hidden="true">→</span></button>
-          <div class="menu-footer"><button id="decorate-button" type="button">布置小店</button><button id="credits-button" type="button">制作名单</button></div>
         </div>
         </section>
         <section id="menu-business-page" class="menu-book-page business-page" data-book-page="business" aria-label="营业" hidden inert>
@@ -188,12 +187,14 @@
         </nav>
       </section>
       <dialog id="credits-dialog" class="credits-dialog" aria-labelledby="credits-title">
-        <form method="dialog"><button class="credits-close" aria-label="关闭制作名单">×</button></form>
-        <h2 id="credits-title">小店制作名单</h2>
-        <p>寿司小转台 · 美术与交互</p>
-        <p class="credits-caption">音乐鸣谢</p>
+        <form method="dialog"><button class="credits-close" aria-label="关闭声音设置">×</button></form>
+        <h2 id="credits-title">声音设置</h2>
+        <button id="settings-sound-toggle" class="settings-sound-toggle" type="button" aria-pressed="true">声音：开</button>
+        <details class="music-credits">
+        <summary>音乐鸣谢</summary>
         <p><a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700069&amp;Search=Search" target="_blank" rel="noopener noreferrer">Bossa Antigua — Kevin MacLeod</a></p>
         <small>incompetech.com · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a><br>原曲未修改，游戏中降低音量并循环播放。</small>
+        </details>
       </dialog>
     </main>
     <script type="module" src="./src/bootstrap.js" onerror="document.getElementById('loading-status').textContent='没连上，再试一次'; const retry=document.getElementById('loading-retry'); retry.hidden=false; retry.onclick=()=>location.reload();"></script>
