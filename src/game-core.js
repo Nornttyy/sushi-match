@@ -73,18 +73,12 @@ export const RECIPES = Object.freeze({
 });
 
 export const CUSTOMER_SKINS = Object.freeze({
-  ginger: { label: '橘子' },
-  calico: { label: '抹茶' },
-  gray: { label: '芝麻' }
+  ginger: { label: '橘猫' },
+  calico: { label: '三花猫' },
+  gray: { label: '灰猫' }
 });
 
-const CUSTOMER_NAMES = [
-  ['橘子', 'ginger'],
-  ['抹茶', 'calico'],
-  ['芝麻', 'gray'],
-  ['小虎', 'ginger'],
-  ['奶盖', 'calico']
-];
+const CUSTOMER_SKIN_ORDER = ['ginger', 'calico', 'gray', 'ginger', 'calico'];
 
 /* Cards are positioned in board percentages. A lower card is selectable whenever
  * no higher card overlaps its usable face; this is deliberately not a whole-layer
@@ -148,10 +142,9 @@ function recipeIngredientCounts(recipe) {
 
 function makeCustomerQueue(level) {
   return level.orders.map((order, index) => {
-    const [name, skin] = CUSTOMER_NAMES[index % CUSTOMER_NAMES.length];
+    const skin = CUSTOMER_SKIN_ORDER[index % CUSTOMER_SKIN_ORDER.length];
     return {
       id: 'l' + level.id + '-customer-' + index,
-      name,
       skin,
       order,
       status: 'waiting'
@@ -463,7 +456,7 @@ export function serveActiveCustomer(state) {
     next.runCoins += reward;
     next.runServed += 1;
   }
-  next.event = served.name + '收下了' + recipe.label + '！获得 ' + reward + ' 金币。';
+  next.event = recipe.label + '已送达！获得 ' + reward + ' 金币。';
   resolveFinish(next);
   return { state: next, changed: true, served: recipe.id, reward };
 }

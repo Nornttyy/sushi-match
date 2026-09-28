@@ -257,7 +257,7 @@ export class CanvasApp {
     const customerY=top+65;this.box(12,customerY,366,98,'#fff5df',17);
     getVisibleCustomers(g).forEach((cat,i)=>{const x=40+i*115,pose=jellyPose(i===0&&s.delivery>470?(s.delivery-470)/290:-1,.55);
       this.ctx.save();if(i>0)this.ctx.globalAlpha=.85;this.ctx.translate(x+39,customerY+87+pose.y);this.ctx.scale(pose.sx,pose.sy);this.sprite('cat-portraits-v1.png',CAT_CROPS[cat.skin],-39,-80,78,80);this.ctx.restore();
-      this.box(x+57,customerY+6,29,27,'#fffbed',9,'#deb587');this.food('sushi',RECIPES[cat.order].foodSprite,x+60,customerY+9,23,21);this.text(cat.name,x+39,customerY+88,9);
+      this.box(x+57,customerY+6,29,27,'#fffbed',9,'#deb587');this.food('sushi',RECIPES[cat.order].foodSprite,x+60,customerY+9,23,21);
     });
     const board={x:21,y:top+196,w:348,h:H-top-387};this.board=board;
     this.box(12,top+170,366,board.h+45,'#b96e4f',18,'#b97f60');this.text('食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');

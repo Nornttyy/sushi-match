@@ -14,7 +14,6 @@
 .customer-card .order-bubble { left: 80%; top: 1px; width: 30px; height: 28px; border-radius: 10px 10px 10px 2px; }
 .customer-card .bubble-sushi { width: 21px; height: 21px; }
 .customer-card .order-ingredients { display: none; }
-.customer-name { position: relative; z-index: 6; margin-top: -9px; font-size: 8px; }
 .is-menu-open .cat-portrait, .result-overlay:not(.is-visible) .cat-portrait { animation-play-state: paused; }
 @keyframes cat-receive-bounce { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-3px); } }
 @keyframes cat-happy-bounce { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-4px); } }

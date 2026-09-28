@@ -240,18 +240,15 @@ function renderCustomers() {
       bubble.className = 'order-bubble'; bubble.append(sushiIcon(recipe.id, 'bubble-sushi'));
       const body = document.createElement('span'); body.className = 'customer-body';
       body.append(createCatPortrait(customer.skin));
-      const name = document.createElement('span'); name.className = 'customer-name';
-      body.append(name); card.append(bubble, body); customerNodes.set(customer.id, card);
+      card.append(bubble, body); customerNodes.set(customer.id, card);
     }
     card.className = 'customer-card'
       + (active?.id === customer.id ? ' is-active' : '')
       + (index > 0 ? ' is-queued' : '');
     card.dataset.customerId = customer.id;
-    card.setAttribute('aria-label', customer.name + '，想要' + recipe.label);
+    card.setAttribute('aria-label', '顾客，想要' + recipe.label);
 
     setFoodArt(card.querySelector('.bubble-sushi'), 'sushi', recipe.foodSprite);
-    const name = card.querySelector('.customer-name');
-    name.textContent = customer.name;
     if (state.status === 'lost') setCatState(card, 'disappointed');
     else if (card.querySelector('.cat-portrait').dataset.state === 'disappointed') setCatState(card, 'waiting');
     if (customerRail.children[index] !== card) customerRail.insertBefore(card, customerRail.children[index] || null);

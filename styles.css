@@ -388,16 +388,6 @@ button {
 .customer-portrait[data-skin="cat"] { background-position: 50% 0%; }
 .customer-portrait[data-skin="duck"] { background-position: 100% 0%; }
 
-.customer-name {
-  margin-top: -8px;
-  padding: 1px 6px;
-  color: #8d5842;
-  font-size: 8px;
-  font-weight: 900;
-  border-radius: 999px;
-  background: #fff7e5;
-}
-
 /* The pile deliberately owns the widest, most prominent part of the screen. */
 .puzzle-stage {
   height: clamp(244px, 37.5dvh, 350px);
