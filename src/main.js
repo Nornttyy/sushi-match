@@ -1,6 +1,6 @@
 import {
   INGREDIENTS,
-  getCampaignLevel, normalizeCampaignIndex, campaignPreviewLastPage,
+  getCampaignLevel, normalizeCampaignIndex, campaignPreviewLastPage, getTileCoverDepths,
   advanceGameTime,
   canCraftActive,
   craftActiveSushi,
@@ -16,7 +16,6 @@ import {
   getRemainingTileCount,
   getServiceProgress,
   getVisibleCustomers,
-  getVisibleTiles,
   isTilePickable,
   selectTile,
   serveActiveCustomer,
@@ -33,6 +32,7 @@ import { MOTION } from './motion-core.js';
 import { mountMenuBook } from './menu-book.js';
 import { createPlayClock, formatTime } from './timer-core.js';
 import { BOARD_SHAPES, shapeBoardFrame, svgPath } from './board-shapes.js';
+import { tileDepthAppearance } from './tile-depth.js';
 
 const LEVEL_STORAGE_KEY = 'sushi-stack-kitchen-level';
 const UNLOCK_STORAGE_KEY = 'sushi-stack-kitchen-unlocked-level';
@@ -306,8 +306,8 @@ function renderBoardGeometry() {
 }
 function renderTileBoard() {
   renderBoardGeometry();
-  const visible = getVisibleTiles(state);
-  const visibleIds = new Set(visible.map((tile) => tile.id));
+  const coverDepths = getTileCoverDepths(state);
+  const visibleIds = new Set([...coverDepths].filter(([, depth]) => depth === 0).map(([id]) => id));
   const activeTiles = state.tiles.filter((tile) => tile.active);
   activeTiles.sort((left, right) => left.layer - right.layer || left.y - right.y || left.x - right.x);
 
@@ -336,7 +336,9 @@ function renderTileBoard() {
     button.style.setProperty('--y', tile.y + '%');
     button.style.setProperty('--layer', String(tile.layer));
     button.style.setProperty('--tilt', tile.tilt + 'deg');
+    button.style.setProperty('--cover-brightness', String(tileDepthAppearance(coverDepths.get(tile.id)).brightness));
     button.dataset.tileId = tile.id;
+    button.dataset.coverDepth = String(coverDepths.get(tile.id));
     button.dataset.sealLayers = String(sealLayers);
     button.disabled = !canInteract;
     button.setAttribute('aria-label', isUncovered

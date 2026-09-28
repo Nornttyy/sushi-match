@@ -363,6 +363,22 @@ export function getVisibleTiles(state) {
   return active.filter((tile) => !isCovered(tile, active, getLevel(state).footprint));
 }
 
+export function getTileCoverDepths(state) {
+  const active = state.tiles.filter(tile => tile.active).sort((a, b) => b.layer - a.layer);
+  const depths = new Map(), footprint = getLevel(state).footprint;
+  // Follow actual overlapping stacks, not the board's highest layer. An
+  // exposed low card stays bright even while another pile is eight layers tall.
+  for (const tile of active) {
+    let depth = 0;
+    for (const upper of active) {
+      if (upper.layer <= tile.layer) break;
+      if (tilesOverlap(upper, tile, footprint)) depth = Math.max(depth, depths.get(upper.id) + 1);
+    }
+    depths.set(tile.id, depth);
+  }
+  return depths;
+}
+
 export function isTilePickable(state, tileId) {
   const tile = getTile(state, tileId);
   return Boolean(tile && tile.active && !tile.sealed && state.status === 'playing' && getVisibleTiles(state).some((item) => item.id === tileId));

@@ -6,9 +6,9 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
-test('covered cards are opaque backs, never translucent food or a dimmed whole stack',()=>{
+test('covered cards are opaque backs shaded by local depth, never translucent food',()=>{
   const rule=css.match(/\.stack-tile\.is-covered\s*\{([^}]+)\}/)[1];
-  assert.match(rule,/opacity:\s*1\s*;/);assert.match(rule,/filter:\s*none\s*;/);
+  assert.match(rule,/opacity:\s*1\s*;/);assert.match(rule,/filter:\s*brightness\(var\(--cover-brightness, 0.86\)\)/);
   const back=css.match(/\.stack-tile\.is-covered \.stack-plate\s*\{([^}]+)\}/)[1];
   assert.match(back,/repeating-linear-gradient\(135deg, #efe1c8 0 4px, #e7d4b1 4px 9px\)/);
   assert.match(main,/else if \(!isUncovered\) plate.replaceChildren\(\)/);

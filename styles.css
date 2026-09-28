@@ -553,7 +553,7 @@ button {
 
 .stack-tile.is-covered {
   opacity: 1;
-  filter: none;
+  filter: brightness(var(--cover-brightness, 0.86));
 }
 
 .stack-tile.is-covered .stack-plate {

@@ -1,4 +1,5 @@
-import { getCampaignLevel, campaignPreviewLastPage, RECIPES, getVisibleTiles, getVisibleCustomers, getRailTiles, getRecipeSlots } from '../../src/game-core.js';
+import { getCampaignLevel, campaignPreviewLastPage, RECIPES, getTileCoverDepths, getVisibleCustomers, getRailTiles, getRecipeSlots } from '../../src/game-core.js';
+import { tileDepthAppearance } from '../../src/tile-depth.js';
 import { FOOD_CROPS, FOOD_MASKS } from '../../src/food-art.js';
 import { CAT_CROPS } from '../../src/cat-portrait.js';
 import { SHOP_THEMES, getDecoration, getTheme, DECOR_FILTERS, getDecorCatalog, getShopRoomFrame } from '../../src/shop-core.js';
@@ -342,10 +343,10 @@ export class CanvasApp {
     this.box(12,top+170,366,bay.h+45,'#b96e4f',18,'#b97f60');this.text(g.tiles.some(t=>t.active&&t.sealed)?SEAL_HINT:shape?.label||'食材台',28,top+187,11,'#fff5df','left');this.text('剩 '+g.tiles.filter(t=>t.active).length,365,top+187,11,'#fff5df','right');
     this.box(bay.x,bay.y,bay.w,bay.h,shape?'#f2ddb8':'#efd19a',11);
     drawShapeGuide(this.ctx,s.level.shape,board);
-    const visible=new Set(getVisibleTiles(g).map(t=>t.id));
+    const coverDepths=getTileCoverDepths(g);
     const tiles=g.tiles.filter(t=>t.active).sort((a,b)=>a.layer-b.layer||a.y-b.y||a.x-b.x);
-    for(const tile of tiles){const w=board.w*(shape?s.level.footprint.x/100:.195),h=shape?board.h*s.level.footprint.y/100:Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,open=visible.has(tile.id);
-      this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':'#cbb083',11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':'#e2c994',10,open?(tile.sealed?'#aec399':'#dcb37f'):'#c7b180');if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);}this.ctx.restore();});
+    for(const tile of tiles){const w=board.w*(shape?s.level.footprint.x/100:.195),h=shape?board.h*s.level.footprint.y/100:Math.min(87,board.h*s.level.footprint.y/100*.85),x=board.x+tile.x/100*board.w-w/2,y=board.y+tile.y/100*board.h-h/2,depth=coverDepths.get(tile.id),open=depth===0,back=tileDepthAppearance(depth);
+      this.elastic('tile:'+tile.id,x,y,w,h,()=>{this.ctx.save();this.ctx.translate(x+w/2,y+h/2);this.ctx.rotate(tile.tilt*Math.PI/180);this.box(-w/2+1,-h/2+4,w,h,open?'#bf9d70':back.side,11);this.box(-w/2,-h/2,w,h,open?'#fffcf0':back.face,10,open?(tile.sealed?'#aec399':'#dcb37f'):back.border);if(open){this.food('ingredient',tile.ingredient,-w*.41,-h*.41,w*.82,h*.82);if(tile.sealed||this.sealPeels.has(tile.id))this.drawSeal(tile,w,h);}this.ctx.restore();});
       const available=open&&!tile.sealed&&g.status==='playing'&&this.motionTime>=this.mergeUntil;
       this.hit(x,y,w,h,available?()=>this.pickTile(tile,{x:x+w/2,y:y+h/2,w,h}):null,available?{key:'tile:'+tile.id}:{});
     }
