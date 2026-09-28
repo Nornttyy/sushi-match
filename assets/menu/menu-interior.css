@@ -1,5 +1,21 @@
 /* Actual generated room art, with live controls and independently movable props. */
 .restaurant-menu { display: block; padding: 0; overflow: hidden; background: #ffe7be; }
+.restaurant-menu { touch-action:pan-y; }
+.restaurant-menu .menu-book-page { position:absolute; inset:0; pointer-events:none; transform-origin:left center; }
+.restaurant-menu .menu-book-page[hidden] { display:none; }
+.menu-book-page > * { position:absolute; pointer-events:auto; }
+.restaurant-menu[data-menu-page='business'] .shop-viewport { visibility:hidden; }
+.business-page::before { content:''; position:absolute; inset:69px 12px 78px; border:2px solid #dbbb88; border-radius:8px 17px 17px 8px; background:#fff7e3; box-shadow:inset 7px 0 #ead7b5,0 4px 0 #cda77b; pointer-events:none; }
+.restaurant-menu .business-page-title { top:13%; width:100%; margin:0; text-align:center; font-size:28px; color:#a45e42; }
+.restaurant-menu .home-page-actions { bottom:85px; left:12%; width:76%; }
+.home-business-button { display:flex; justify-content:space-between; align-items:center; width:100%; min-height:48px; padding:10px 18px; border:2px solid #a96545; border-radius:14px; background:#c47955; box-shadow:0 4px 0 #91563d; color:#fff8e6; font-size:17px; font-weight:800; cursor:pointer; }
+.restaurant-menu .home-page-actions .menu-footer { position:relative; bottom:auto; left:auto; width:100%; display:flex; justify-content:space-between; margin-top:12px; }
+.restaurant-menu .menu-book-navigation { z-index:25; bottom:max(9px,env(safe-area-inset-bottom)); left:4%; width:92%; height:47px; display:grid; grid-template-columns:32px repeat(3,minmax(0,1fr)) 32px; align-items:center; gap:3px; padding:5px; border:2px solid #bd9064; border-radius:8px 12px 12px 8px; background:#fff6df; box-shadow:0 3px 0 #d7b98e; }
+.menu-book-navigation button { min-width:0; height:32px; border:0; border-radius:7px; background:transparent; color:#916247; font-size:13px; font-weight:750; cursor:pointer; }
+.menu-book-navigation button[aria-current='page'] { background:#bd7754; color:#fff9e8; }
+.menu-book-navigation .book-page-arrow { font-size:25px; line-height:1; }
+.menu-book-navigation button:disabled { opacity:.3; cursor:default; }
+.menu-book-number { position:absolute; left:50%; top:-19px; transform:translateX(-50%); padding:1px 10px; border-radius:8px 8px 0 0; background:#fff6df; font-size:10px; color:#976b4d; font-variant-numeric:tabular-nums; }
 .restaurant-menu > * { position: absolute !important; }
 .shop-viewport { inset: 0; overflow: clip; pointer-events: none; }
 .shop-room { position: absolute; overflow: hidden; pointer-events: none; }
@@ -70,6 +86,7 @@
 .restaurant-menu .decor-zone[hidden] { display: none; }
 .restaurant-menu:not(.is-decorating) .decor-zone { display: none; }
 .restaurant-menu .decor-tray { z-index: 12; bottom: max(6px, env(safe-area-inset-bottom)); left: 2%; width: 96%; padding: 8px 9px 5px; color: #795338; background: #fff5df; border: 2px solid #c89565; border-radius: 16px; box-shadow: 0 -4px 14px #6d482420; }
+.restaurant-menu #menu-decor-page .decor-tray { bottom:max(80px,calc(env(safe-area-inset-bottom) + 71px)); }
 .decor-tray[hidden], .decor-selection[hidden] { display: none; }
 .decor-catalog[hidden] { display: none; }
 .decor-filters[hidden] { display:none; }
@@ -137,4 +154,17 @@
   .restaurant-menu .decor-tray { padding-top: 5px; }
   .decor-thumbnail { height: 37px; }
   .decor-buy .decor-sprite { width: min(49px, calc(34px * var(--dw) / var(--dh))); height: auto; }
+}
+/* The business page owns its own layout; it no longer sits on shop furniture. */
+.restaurant-menu .business-page .mode-picker { top:24%; }
+.restaurant-menu .business-page .level-picker { top:37%; }
+.restaurant-menu .business-page .level-pagination { top:54%; }
+.restaurant-menu .business-page .endless-preview { top:36%; }
+.restaurant-menu .business-page .menu-level-info { top:63%; background:none; }
+.restaurant-menu .business-page .menu-start-button { top:78%; }
+@media (max-height:650px) {
+  .business-page::before { top:56px; }
+  .restaurant-menu .business-page-title { top:12%; font-size:24px; }
+  .restaurant-menu .home-page-actions { bottom:83px; }
+  .home-business-button { min-height:41px; font-size:15px; }
 }

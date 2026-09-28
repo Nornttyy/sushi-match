@@ -7,6 +7,7 @@ import { GAME_IMAGES } from '../../src/asset-manifest.js';
 import { loadingSnapshot, createTaskCache } from '../../src/loading-core.js';
 import { MOTION, jellyPose, flightPose } from '../../src/motion-core.js';
 import { Session } from './session.js';
+import { MENU_PAGES, menuPageIndex, stepMenuPage } from '../../src/menu-pages.js';
 
 const W = 390;
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
@@ -73,6 +74,8 @@ export class CanvasApp {
   point(p) { return { ...p, x: (p.x-this.offset)/this.scale, y: p.y/this.scale }; }
   down(raw) {
     const p = this.point(raw); this.press = { ...p, target: [...this.hits].reverse().find(hit => inside(p, hit)), moved: false };
+    const overCatalog=this.session.scene==='shop'&&p.y>=this.H-this.bottom-71-(this.tab==='decor'?184:155);
+    this.press.bookSwipe=!this.loading&&['menu','shop'].includes(this.session.scene)&&!this.credits&&!this.press.target&&!overCatalog;
     this.dirty = true;
     if (this.press.target?.decor) { this.selectedDecor = this.press.target.decor; this.dirty = true; }
   }
@@ -93,6 +96,11 @@ export class CanvasApp {
     if (!this.press || raw.id !== this.press.id) return;
     const press = this.press; this.press = null;
     this.dirty = true;
+    const end=this.point(raw),dx=end.x-press.x,dy=end.y-press.y;
+    if(press.bookSwipe&&Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.5){
+      this.showMenuPage(stepMenuPage(this.session.scene==='shop'?'decor':this.session.menuPage,dx<0?1:-1));
+      return;
+    }
     if (!press.moved && press.target && inside(this.point(raw), press.target)) {
       const scene=this.session.scene,game=this.session.game;
       if(press.target.key)this.pulses.set(press.target.key,this.motionTime);
@@ -181,7 +189,7 @@ export class CanvasApp {
     if(this.loadError)this.button('再试一次',125,mid+148,140,40,()=>void this.load(),{active:true});
   }
   drawRoom() {
-    const toolbarTop=this.session.scene==='shop'?this.H-this.bottom-(this.tab==='decor'?184:155):null;
+    const toolbarTop=this.session.scene==='shop'?this.H-this.bottom-71-(this.tab==='decor'?184:155):null;
     this.room=getShopRoomFrame(W,this.H,toolbarTop,this.top+48);const r=this.room;
     this.box(0,0,W,this.H,'#ffe7be',0);
     this.sprite('menu/'+getTheme(this.previewTheme||this.session.shop.theme).image,null,r.x,r.y,r.w,r.h);
@@ -192,36 +200,65 @@ export class CanvasApp {
       if(this.session.scene==='shop')this.hit(x,y,w,h,()=>{this.selectedDecor=p.id;},{decor:p.id});
     }
   }
-  drawMenu() {
-    const s=this.session,H=this.H,bottom=this.bottom;this.drawRoom();
-    this.box(16,this.top+10,100,32,'#fff3daeb',17);this.text(s.shop.coins+' 金币',66,this.top+26,13);
-    this.button(s.muted?'声音关':'声音开',292,this.top+10,82,32,()=>s.toggleSound(),{size:12});
-    if(s.scene==='shop'){this.drawShop();return;}
-    this.text('寿司小转台',195,Math.max(this.top+82,H*.15),35,'#b76348');
+  showMenuPage(id) {
+    if(!MENU_PAGES.some(page=>page.id===id))return;
+    this.session.menuPage=id;this.session.scene=id==='decor'?'shop':'menu';
+    this.selectedDecor=null;this.previewTheme=null;this.press=null;this.dirty=true;
+    this.p.effect('ui');this.render(this.p.now());
+  }
+  drawMenuNavigation() {
+    const current=this.session.scene==='shop'?'decor':this.session.menuPage||'home',y=this.H-this.bottom-56;
+    this.box(14,y,362,46,'#fff6df',10,'#bd9064');
+    this.text((menuPageIndex(current)+1)+' / 3',195,y-10,10);
+    this.button('‹',20,y+7,30,32,()=>this.showMenuPage(stepMenuPage(current,-1)),{disabled:current==='home'});
+    MENU_PAGES.forEach((page,i)=>this.button(page.label,57+i*92,y+7,86,32,()=>this.showMenuPage(page.id),{active:current===page.id,size:13}));
+    this.button('›',341,y+7,29,32,()=>this.showMenuPage(stepMenuPage(current,1)),{disabled:current==='decor'});
+  }
+  drawBusinessPage() {
+    const s=this.session,H=this.H-this.bottom,top=this.top+58,bottom=H-79;
+    this.box(13,top,364,bottom-top,'#e5cba4',13,'#c59f72');
+    this.box(21,top+2,354,bottom-top-6,'#fff7e3',12);
+    this.text('营业手册',195,top+35,29,'#a45e42');
+    this.button('闯关 · 24 天',67,top+70,135,34,()=>{s.mode='campaign';},{active:s.mode==='campaign',size:12});
+    this.button('无尽模式',213,top+70,110,34,()=>{s.mode='endless';},{active:s.mode==='endless',size:12});
     if(s.mode==='campaign'){
-      for(let i=0;i<3;i++){const level=this.page*3+i,x=35+i*116,y=H*.46,locked=level>s.unlocked;
+      for(let i=0;i<3;i++){const level=this.page*3+i,x=35+i*116,y=top+147,locked=level>s.unlocked;
         this.ctx.save();if(locked)this.ctx.globalAlpha=.5;
         this.sprite('menu/shop-parts-v1.png',[44,806,537,299],x,y+12,88,50);this.food('sushi',RECIPES[LEVELS[level].orders[0]].foodSprite,x+8,y-17,72,63);this.ctx.restore();
         this.button('第 '+(level+1)+' 天'+(locked?' · 锁':''),x-2,y+65,94,27,()=>{s.selected=level;},{active:s.selected===level,size:11});
       }
-      this.button('‹',106,H*.585,35,29,()=>{this.page--;s.selected=this.page*3;},{disabled:this.page===0});
-      this.text((this.page*3+1)+'–'+(this.page*3+3)+' / 24',195,H*.585+15,11);
-      this.button('›',249,H*.585,35,29,()=>{this.page++;s.selected=this.page*3;},{disabled:this.page===7});
-    }else{this.text('∞',195,H*.465,57,'#b76348');this.text('无尽营业',195,H*.535,23);this.text('最高 '+s.bestWave+' 波 · 最多 '+s.bestOrders+' 单',195,H*.58,12);}
-    this.button('闯关 · 24 天',76,H*.65,128,34,()=>{s.mode='campaign';},{active:s.mode==='campaign',size:12});
-    this.button('无尽模式',211,H*.65,103,34,()=>{s.mode='endless';},{active:s.mode==='endless',size:12});
-    this.box(28,H*.72,334,Math.min(90,H*.12),'#fff0d9e8',14);
-    this.text(s.mode==='campaign'?'第 '+(s.selected+1)+' 天 · '+LEVELS[s.selected].name:'七格备料 · 持续挑战',195,H*.75,18);
-    const orders=[...new Set((s.mode==='campaign'?LEVELS[s.selected]:LEVELS[3]).orders)];orders.slice(0,6).forEach((id,i)=>this.food('sushi',RECIPES[id].foodSprite,195-orders.length*16+i*32,H*.775,28,28));
+      this.button('‹',106,top+250,35,29,()=>{this.page--;s.selected=this.page*3;},{disabled:this.page===0});
+      this.text((this.page*3+1)+'–'+(this.page*3+3)+' / 24',195,top+265,11);
+      this.button('›',249,top+250,35,29,()=>{this.page++;s.selected=this.page*3;},{disabled:this.page===7});
+    }else{
+      this.text('∞',195,top+161,57,'#b76348');this.text('无尽营业',195,top+222,23);
+      this.text('最高 '+s.bestWave+' 波 · 最多 '+s.bestOrders+' 单',195,top+260,12);
+    }
+    this.text(s.mode==='campaign'?'第 '+(s.selected+1)+' 天 · '+LEVELS[s.selected].name:'七格备料 · 持续挑战',195,bottom-141,18);
+    const orders=[...new Set((s.mode==='campaign'?LEVELS[s.selected]:LEVELS[3]).orders)];
+    orders.slice(0,6).forEach((id,i)=>this.food('sushi',RECIPES[id].foodSprite,195-orders.length*16+i*32,bottom-119,28,28));
     const locked=s.mode==='campaign'&&s.selected>s.unlocked;
-    this.button(locked?'尚未解锁':s.mode==='endless'&&s.endless?.status==='playing'?'继续挑战':'开始营业',64,H-bottom-105,262,48,()=>s.start(),{active:true,disabled:locked,size:21});
-    this.button('布置小店',18,H-bottom-45,96,31,()=>{s.scene='shop';},{size:12});
-    if(s.mode==='endless'&&s.endless?.status==='playing')this.button('重新挑战',145,H-bottom-45,100,31,()=>s.start(true),{size:12});
-    this.button('制作名单',284,H-bottom-45,88,31,()=>{this.credits=true;},{size:11});
+    this.button(locked?'尚未解锁':s.mode==='endless'&&s.endless?.status==='playing'?'继续挑战':'开始营业',64,bottom-75,262,46,()=>s.start(),{active:true,disabled:locked,size:20});
+    if(s.mode==='endless'&&s.endless?.status==='playing')this.button('重新挑战',145,bottom-25,100,23,()=>s.start(true),{size:11});
+  }
+  drawMenu() {
+    const s=this.session,H=this.H,bottom=this.bottom;
+    if(s.scene==='shop'||s.menuPage!=='business')this.drawRoom();else this.box(0,0,W,H,'#ffe7be',0);
+    this.box(16,this.top+10,100,32,'#fff3daeb',17);this.text(s.shop.coins+' 金币',66,this.top+26,13);
+    this.button(s.muted?'声音关':'声音开',292,this.top+10,82,32,()=>s.toggleSound(),{size:12});
+    if(s.scene==='shop')this.drawShop();
+    else if(s.menuPage==='business')this.drawBusinessPage();
+    else{
+      this.text('寿司小转台',195,Math.max(this.top+82,H*.15),35,'#b76348');
+      this.button('翻开营业手册 →',64,H-bottom-174,262,48,()=>this.showMenuPage('business'),{active:true,size:18});
+      this.button('布置小店',57,H-bottom-114,111,30,()=>this.showMenuPage('decor'),{size:12});
+      this.button('制作名单',231,H-bottom-114,99,30,()=>{this.credits=true;},{size:11});
+    }
+    this.drawMenuNavigation();
     if(this.credits){this.hits=[];this.box(25,H/2-160,340,300,'#fff5df',20,'#c5956c');this.text('小店制作名单',195,H/2-115,23);this.text('Bossa Antigua · Kevin MacLeod',195,H/2-55,15);this.text('incompetech.com · CC BY 4.0',195,H/2-20,14);this.text('原曲未修改，降低音量并循环播放',195,H/2+15,12);this.button('关闭',125,H/2+65,140,40,()=>{this.credits=false;});}
   }
   drawShop() {
-    const s=this.session,H=this.H-this.bottom,y=H-(this.tab==='decor'?184:155);
+    const s=this.session,H=this.H-this.bottom-71,y=H-(this.tab==='decor'?184:155);
     // Room remains connected to the furniture; catalog is only a bottom toolbar.
     this.box(8,y,374,H-y-7,'#fff5df',16,'#c5956c');
     this.button('摆件',18,y+9,58,29,()=>{this.tab='decor';},{active:this.tab==='decor',size:12});
@@ -230,7 +267,7 @@ export class CanvasApp {
       this.button('翻转',154,y+9,53,29,()=>s.flip(this.selectedDecor),{size:11});
       this.button('收起',211,y+9,53,29,()=>{s.store(this.selectedDecor);this.selectedDecor=null;},{size:11});
     }
-    this.button('完成',299,y+9,68,29,()=>{s.scene='menu';this.selectedDecor=null;this.previewTheme=null;},{active:true,size:12});
+    this.button('完成',299,y+9,68,29,()=>this.showMenuPage('home'),{active:true,size:12});
     if(this.tab==='themes')SHOP_THEMES.forEach((theme,i)=>{
       const x=18+i*120;this.sprite('menu/'+theme.image,null,x,y+43,111,56);
       this.button(theme.name,x,y+104,111,28,()=>{if(this.previewTheme!==theme.id){this.previewTheme=theme.id;return;}const r=s.theme(theme.id);if(!r.changed&&r.reason==='coins')this.notice('金币不足');else this.previewTheme=null;},{active:(this.previewTheme||s.shop.theme)===theme.id,size:11});
@@ -291,6 +328,6 @@ export class CanvasApp {
     this.text(g.served+' / '+g.customers.length+' 单',112,y+306,22);this.text('+'+(g.mode==='endless'?g.runCoins:g.coins)+' 金币',270,y+306,22);
     this.text(won?'金币已入账':'已赚金币保留',195,y+346,12);
     this.button(won?(g.mode==='endless'?'继续下一波':g.levelIndex===23?'挑战无尽模式':'下一天'):'重新开始',60,y+375,270,47,()=>s.advance(),{active:true,size:18});
-    this.button(won?'回店布置':'返回小店',121,y+436,148,31,()=>{s.menu();if(won)s.scene='shop';},{size:12});
+    this.button(won?'回店布置':'返回小店',121,y+436,148,31,()=>{s.menu();if(won)this.showMenuPage('decor');},{size:12});
   }
 }

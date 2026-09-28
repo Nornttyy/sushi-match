@@ -28,6 +28,7 @@ import { createCatPortrait, setCatState } from './cat-portrait.js';
 import { foodIcon, setFoodArt } from './food-art.js';
 import { mountJuice } from './juice.js';
 import { MOTION } from './motion-core.js';
+import { mountMenuBook } from './menu-book.js';
 
 const LEVEL_STORAGE_KEY = 'sushi-stack-kitchen-level';
 const UNLOCK_STORAGE_KEY = 'sushi-stack-kitchen-unlocked-level';
@@ -111,7 +112,12 @@ let isResolving = false;
 let resolveEpoch = 0;
 
 const sounds = new GameSound();
-const shop = mountShop({ root: mainMenu, onSound: name => sounds.play(name) });
+let menuBook;
+const shop = mountShop({ root: mainMenu, onSound: name => sounds.play(name),
+  onEditingChange:editing=>menuBook?.show(editing?'decor':'home') });
+menuBook=mountMenuBook({root:mainMenu,onSound:name=>sounds.play(name),onChange:page=>{
+  if(page==='decor')shop.openEditor({notify:false});else shop.closeEditor({notify:false});
+}});
 const feedback = mountFeedback({ overlay, gameShell, ingredientIcon });
 const juice = mountJuice({ board: tileBoard, rail: ingredientRail, prep: document.querySelector('.recipe-plate') });
 sounds.onPlaybackChange = syncMenuMusic;
@@ -600,14 +606,15 @@ function showMainMenu() {
   syncMenuInteractivity();
   render();
   renderMenu();
+  menuBook.show('home',{animate:false});
   window.requestAnimationFrame(() => {
-    if (!mainMenu.classList.contains('is-decorating')) menuStartButton.focus({ preventScroll: true });
+    if(menuBook.page==='home')document.querySelector('#home-business-button').focus({preventScroll:true});
   });
 }
 
 function startSelectedLevel() {
   if (selectedMode === 'campaign' && selectedLevel > unlockedLevel) return;
-  shop.closeEditor();
+  shop.closeEditor({notify:false});
   sounds.unlock();
   void sounds.startBgm();
   sounds.play('ui');
@@ -717,6 +724,9 @@ creditsDialog.addEventListener('click', (event) => {
   }
 });
 menuStartButton.addEventListener('click', startSelectedLevel);
+document.querySelector('#home-business-button').addEventListener('click',()=>{
+  sounds.play('ui');menuBook.show('business',{focus:true});
+});
 document.addEventListener('pointerdown', (event) => {
   if (event.target.closest('#menu-sound-button, #sound-button')) return;
   void sounds.unlock();

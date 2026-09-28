@@ -12,7 +12,7 @@ export class Session {
     this.bestWave = integer(stored.bestWave); this.bestOrders = integer(stored.bestOrders);
     this.muted = stored.muted === true;
     this.shop = restoreShop(platform.get(SHOP_STORAGE_KEY));
-    this.scene = 'menu'; this.mode = 'campaign'; this.game = null; this.endless = null;
+    this.scene = 'menu'; this.menuPage = 'home'; this.mode = 'campaign'; this.game = null; this.endless = null;
     this.delivery = 0; this.saved = true; this.persist();
   }
   persist() {
@@ -27,7 +27,7 @@ export class Session {
       : createGame(this.selected);
     this.scene = 'game'; this.delivery = 0; this.persist(); return true;
   }
-  menu() { if (this.game?.mode === 'endless') this.endless = this.game; this.scene = 'menu'; this.delivery = 0; }
+  menu() { if (this.game?.mode === 'endless') this.endless = this.game; this.scene = 'menu'; this.menuPage = 'home'; this.delivery = 0; }
   pick(id) {
     if (this.scene !== 'game' || this.delivery || !this.game) return false;
     const result = selectTile(this.game, id);

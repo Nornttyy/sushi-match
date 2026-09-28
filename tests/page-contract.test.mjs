@@ -78,7 +78,7 @@ test('menu art is bundled locally with the expected size and transparent sprite 
 
 test('the menu is an indoor shop without the old cat or feeding interaction', () => {
   const menu = html.split('id="main-menu"')[1].split('<dialog')[0];
-  assert.match(menu, /寿司店内主菜单/);
+  assert.match(menu, /寿司店翻页主菜单/);
   assert.match(menu, /menu-recipe-preview/);
   assert.match(menu, /decorate-button/);
   assert.doesNotMatch(menu, /menu-chef|猫猫|customer-portrait|menu-seaside/);

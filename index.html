@@ -102,7 +102,7 @@
 
       <div id="handoff-fx" class="handoff-fx" aria-hidden="true"></div>
 
-      <section id="main-menu" class="main-menu restaurant-menu is-visible" aria-label="寿司店内主菜单" aria-hidden="false">
+      <section id="main-menu" class="main-menu restaurant-menu is-visible" data-menu-page="home" aria-label="寿司店翻页主菜单" aria-hidden="false">
         <div class="shop-viewport"><div id="shop-room" class="shop-room">
           <img class="menu-interior" src="./assets/menu/sushi-interior-v1.png" alt="" fetchpriority="high" />
           <div id="decor-zone" class="decor-zone" aria-hidden="true" hidden></div>
@@ -114,9 +114,17 @@
             <span class="menu-record menu-art art-record" aria-hidden="true"></span><span id="menu-radio-label">轻点播放</span>
           </button>
         </div>
+        <section id="menu-home-page" class="menu-book-page" data-book-page="home" aria-label="小店">
         <div class="menu-hero">
           <h2>寿司<span>小转台</span></h2>
         </div>
+        <div class="home-page-actions">
+          <button id="home-business-button" class="home-business-button" type="button">翻开营业手册 <span aria-hidden="true">→</span></button>
+          <div class="menu-footer"><button id="decorate-button" type="button">布置小店</button><button id="credits-button" type="button">制作名单</button></div>
+        </div>
+        </section>
+        <section id="menu-business-page" class="menu-book-page business-page" data-book-page="business" aria-label="营业" hidden inert>
+        <h2 class="business-page-title">营业手册</h2>
             <div id="level-picker" class="level-picker" aria-label="吧台餐盘，选择营业日">
               <button class="menu-day" type="button" data-level="0">
                 <span class="menu-dish"><span class="menu-art art-plate" aria-hidden="true"></span><span class="sushi-icon" data-sushi="salmon" aria-hidden="true"></span></span>
@@ -152,7 +160,8 @@
           <small id="menu-level-copy"></small>
         </div>
         <button id="menu-start-button" class="menu-start-button" type="button"><span>开始营业</span><span aria-hidden="true">→</span></button>
-        <div class="menu-footer"><button id="decorate-button" type="button">布置小店</button><button id="credits-button" type="button">制作名单</button></div>
+        </section>
+        <section id="menu-decor-page" class="menu-book-page" data-book-page="decor" aria-label="装修" hidden inert>
         <section id="decor-tray" class="decor-tray" aria-label="装饰商店与仓库" hidden>
           <div class="decor-toolbar">
             <div id="decor-tabs" class="decor-tabs" aria-label="装修分类"><button type="button" data-tab="decor" aria-pressed="true">摆件</button><button type="button" data-tab="themes" aria-pressed="false">主题</button></div>
@@ -168,6 +177,15 @@
           <div id="theme-catalog" class="decor-catalog theme-catalog" aria-label="选择店铺主题" hidden></div>
           <p id="decor-hint" class="decor-hint" aria-live="polite"></p>
         </section>
+        </section>
+        <nav id="menu-book-navigation" class="menu-book-navigation" aria-label="主菜单翻页">
+          <span id="menu-book-number" class="menu-book-number" aria-live="polite">1 / 3</span>
+          <button id="menu-book-previous" class="book-page-arrow" type="button" aria-label="主菜单上一页" disabled>‹</button>
+          <button type="button" data-menu-target="home" aria-current="page" aria-controls="menu-home-page">小店</button>
+          <button type="button" data-menu-target="business" aria-current="false" aria-controls="menu-business-page">营业</button>
+          <button type="button" data-menu-target="decor" aria-current="false" aria-controls="menu-decor-page">装修</button>
+          <button id="menu-book-next" class="book-page-arrow" type="button" aria-label="主菜单下一页">›</button>
+        </nav>
       </section>
       <dialog id="credits-dialog" class="credits-dialog" aria-labelledby="credits-title">
         <form method="dialog"><button class="credits-close" aria-label="关闭制作名单">×</button></form>

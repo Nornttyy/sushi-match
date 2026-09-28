@@ -6,7 +6,7 @@ import {
 import { DECOR_ART } from './decor-assets.js';
 import { clippedAtlas } from './atlas-art.js';
 
-export function mountShop({ root, onSound = () => {} }) {
+export function mountShop({ root, onSound = () => {}, onEditingChange = () => {} }) {
   const layer = root.querySelector('#shop-decor-layer');
   const tray = root.querySelector('#decor-tray');
   const catalog = root.querySelector('#decor-catalog');
@@ -172,7 +172,8 @@ export function mountShop({ root, onSound = () => {} }) {
     render();
   }
 
-  function openEditor() {
+  function openEditor({notify=true}={}) {
+    if(editing)return;
     editing = true;
     root.classList.add('is-decorating');
     tray.hidden = false;
@@ -180,10 +181,12 @@ export function mountShop({ root, onSound = () => {} }) {
     edit.hidden = true;
     hint.textContent = '';
     render();
+    if(notify)onEditingChange(true);
     done.focus({ preventScroll: true });
   }
 
-  function closeEditor() {
+  function closeEditor({notify=true}={}) {
+    if(!editing)return;
     finishDrag();
     editing = false;
     selected = null;
@@ -193,7 +196,7 @@ export function mountShop({ root, onSound = () => {} }) {
     normalControls.forEach(el => { el.inert = false; });
     edit.hidden = false;
     render();
-    edit.focus({ preventScroll: true });
+    if(notify){onEditingChange(false);edit.focus({ preventScroll: true });}
   }
 
   edit.addEventListener('click', openEditor);
