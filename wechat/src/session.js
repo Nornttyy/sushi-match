@@ -1,4 +1,4 @@
-import { LEVELS, createGame, createEndlessGame, nextEndlessWave, getLevel, selectTile, undoRailPick, canCraftActive, craftActiveSushi, serveActiveCustomer } from '../../src/game-core.js';
+import { LEVELS, createGame, createEndlessGame, nextEndlessWave, getLevel, selectTile, undoRailPick, canCraftActive, craftActiveSushi, serveActiveCustomer, advanceGameTime } from '../../src/game-core.js';
 import { SHOP_STORAGE_KEY, restoreShop, earnShopCoins, purchaseAndPlace, purchaseTheme, moveDecoration, flipDecoration, storeDecoration } from '../../src/shop-core.js';
 
 const KEY = 'sushi-wechat-progress-v1';
@@ -31,7 +31,7 @@ export class Session {
   pick(id) {
     if (this.scene !== 'game' || this.delivery || !this.game) return false;
     const result = selectTile(this.game, id);
-    if (result.changed) { this.game = result.state; this.record(); this.platform.effect(result.harvested ? 'triple' : 'pick'); }
+    if (result.changed) { this.game = result.state; this.record(); this.platform.effect(this.game.status === 'lost' ? 'lose' : result.harvested ? 'triple' : 'pick'); }
     return result.changed;
   }
   undo() {
@@ -40,6 +40,12 @@ export class Session {
     if (result.changed) this.platform.effect('pick');
   }
   // Only foreground frames advance delivery. There are no orphaned timers.
+  elapse(milliseconds) {
+    if (this.scene !== 'game' || !this.game || this.delivery) return false;
+    const result = advanceGameTime(this.game, milliseconds); this.game = result.state;
+    if (result.expired) { this.record(); this.platform.effect('lose'); }
+    return result.expired;
+  }
   tick(milliseconds) {
     if (this.scene !== 'game' || this.game?.status !== 'playing') return;
     if (!this.game.workbench.crafted && canCraftActive(this.game)) {
@@ -50,7 +56,7 @@ export class Session {
     if (this.delivery < 760) return;
     const result = serveActiveCustomer(this.game);
     this.game = result.state; this.delivery = 0;
-    if (result.changed) { this.shop = earnShopCoins(this.shop, result.reward); this.platform.effect('serve'); this.record(); }
+    if (result.changed) { this.shop = earnShopCoins(this.shop, result.reward); this.platform.effect(this.game.status === 'won' ? 'win' : 'serve'); this.record(); }
   }
   record() {
     if (this.game?.mode === 'endless') {
@@ -67,6 +73,10 @@ export class Session {
     else if (this.game.levelIndex < LEVELS.length - 1) { this.selected = this.game.levelIndex + 1; this.game = createGame(this.selected); }
     else { this.mode = 'endless'; this.game = createEndlessGame(); }
     this.delivery = 0; this.persist();
+  }
+  replay() {
+    if (!this.game || this.game.status !== 'won') return;
+    this.mode = this.game.mode; this.selected = this.game.levelIndex; this.start(true);
   }
   buy(id) { const r = purchaseAndPlace(this.shop, id); this.shop = r.state; this.persist(); return r; }
   theme(id) { const r = purchaseTheme(this.shop, id); this.shop = r.state; this.persist(); return r; }

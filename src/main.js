@@ -1,6 +1,7 @@
 import {
   INGREDIENTS,
   LEVELS,
+  advanceGameTime,
   canCraftActive,
   craftActiveSushi,
   createGame,
@@ -30,6 +31,7 @@ import { SEAL_HINT } from './nori-seals.js';
 import { mountJuice } from './juice.js';
 import { MOTION } from './motion-core.js';
 import { mountMenuBook } from './menu-book.js';
+import { createPlayClock, formatTime } from './timer-core.js';
 
 const LEVEL_STORAGE_KEY = 'sushi-stack-kitchen-level';
 const UNLOCK_STORAGE_KEY = 'sushi-stack-kitchen-unlocked-level';
@@ -58,6 +60,10 @@ const overlayTitle = document.querySelector('#overlay-title');
 const overlayText = document.querySelector('#overlay-text');
 const overlayButton = document.querySelector('#overlay-button');
 const overlayMenuButton = document.querySelector('#overlay-menu-button');
+const overlayReplayButton = document.querySelector('#overlay-replay-button');
+const countdown = document.querySelector('#countdown');
+const countdownTime = document.querySelector('#countdown-time');
+const countdownLabel = document.querySelector('#countdown-label');
 const restartButton = document.querySelector('#restart-button');
 const soundButton = document.querySelector('#sound-button');
 const handoffFx = document.querySelector('#handoff-fx');
@@ -111,6 +117,8 @@ let previousVisibleTiles = new Set();
 let isMenuOpen = true;
 let isResolving = false;
 let resolveEpoch = 0;
+const playClock = createPlayClock();
+let timerDisplay = '';
 
 const sounds = new GameSound();
 let menuBook;
@@ -186,7 +194,7 @@ function renderMenu() {
   const canContinue = endlessSession && endlessSession.status !== 'lost';
   menuLevelTitle.textContent = endless ? '无尽营业' : '第 ' + level.id + ' 天 · ' + level.name;
   menuLevelCopy.textContent = endless ? '固定关卡 · 逐波加难' : available
-    ? level.orders.length + ' 单 · ' + level.layers.length + ' 层 · ' + level.difficulty
+    ? level.orders.length + ' 单 · ' + formatTime(level.timeLimitMs) + ' · ' + level.difficulty
     : '完成第 ' + selectedLevel + ' 天后解锁';
   menuStartButton.querySelector('span').textContent = endless ? (canContinue ? '继续第 ' + endlessSession.wave + ' 波' : '开始挑战') : available ? '开始营业' : '先完成第 ' + selectedLevel + ' 天';
   menuStartButton.disabled = !available;
@@ -427,7 +435,33 @@ function render() {
   renderPrep();
   renderIngredientRail();
   renderOverlay();
+  renderTimer();
 }
+
+function renderTimer() {
+  const limited = Number.isFinite(state.timeRemainingMs);
+  const paused = document.hidden || isMenuOpen || isResolving;
+  const label = !state.timeStarted ? '点牌开始' : paused && state.status === 'playing' ? '暂停' : '剩余';
+  const value = formatTime(state.timeRemainingMs);
+  const key = [limited, label, value, state.status].join(':');
+  if (key === timerDisplay) return;
+  timerDisplay = key; countdown.hidden = !limited;
+  countdownTime.textContent = value; countdownLabel.textContent = label;
+  countdown.classList.toggle('is-urgent', limited && state.timeRemainingMs <= 20000);
+  countdown.setAttribute('aria-label', label + '时间 ' + value);
+}
+
+function updateClock(now = performance.now()) {
+  const elapsed = playClock.sample(now, !document.hidden && !isMenuOpen && !isResolving);
+  const result = advanceGameTime(state, elapsed); state = result.state;
+  if (result.expired) {
+    resolveEpoch++; isResolving = false; juice.clear(); clearHandoff();
+    sounds.play('lose'); render();
+  } else renderTimer();
+  return result.expired;
+}
+
+function clockFrame(now) { updateClock(now); requestAnimationFrame(clockFrame); }
 
 function pause(duration) {
   return new Promise((resolve) => window.setTimeout(resolve, duration));
@@ -554,6 +588,7 @@ async function chooseTile(tileId) {
   if (isResolving || isMenuOpen) {
     return;
   }
+  if (updateClock()) return;
   const result = selectTile(state, tileId);
   if (!result.changed) {
     showMessage(result.reason === 'sealed' ? SEAL_HINT : '这张食材还被上面的牌压着。');
@@ -580,6 +615,7 @@ function undoPick() {
   if (isResolving || isMenuOpen) {
     return;
   }
+  if (updateClock()) return;
   const result = undoRailPick(state);
   if (!result.changed) {
     if (result.reason === 'tokens') {
@@ -594,6 +630,7 @@ function undoPick() {
 }
 
 function restart(levelIndex = state.levelIndex) {
+  playClock.reset(performance.now());
   juice.clear();
   resolveEpoch += 1;
   isResolving = false;
@@ -606,6 +643,7 @@ function restart(levelIndex = state.levelIndex) {
 }
 
 function showMainMenu() {
+  updateClock();
   juice.clear();
   if (state.mode === 'endless') endlessSession = state;
   resolveEpoch += 1;
@@ -650,6 +688,7 @@ function newEndlessGame() {
 }
 
 function installEndless(next) {
+  playClock.reset(performance.now());
   juice.clear();
   resolveEpoch++;
   isResolving = false;
@@ -689,9 +728,13 @@ overlayButton.addEventListener('click', () => {
 });
 overlayMenuButton.addEventListener('click', () => {
   sounds.play('ui');
-  const won = state.status === 'won';
   showMainMenu();
-  if (won) shop.openEditor();
+});
+overlayReplayButton.addEventListener('click', () => {
+  if (state.status !== 'won') return;
+  sounds.play('ui');
+  if (state.mode === 'endless') installEndless(newEndlessGame());
+  else restart(state.levelIndex);
 });
 soundButton.addEventListener('click', toggleSound);
 menuSoundButton.addEventListener('click', () => {
@@ -750,6 +793,8 @@ document.addEventListener('keydown', (event) => {
   void sounds.resumeBgm();
 }, { capture: true });
 document.addEventListener('visibilitychange', () => {
+  playClock.reset(performance.now());
+  renderTimer();
   if (document.hidden) {
     sounds.pauseForVisibility();
   } else {
@@ -762,3 +807,4 @@ syncMenuInteractivity();
 render();
 renderMenu();
 void sounds.startBgm();
+requestAnimationFrame(clockFrame);

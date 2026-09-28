@@ -40,7 +40,7 @@ export function createWechatPlatform(api, raf, cancelRaf) {
     resource(path) { return path === 'sushi-atlas-v2.png' ? 'boot/sushi-atlas-v2.png' : 'resources/assets/' + path; },
     musicReady() { audioReady = true; playMusic(); },
     sound(value) { enabled = value; if (value) playMusic(); else audio?.pause(); },
-    effect() { if (enabled) api.vibrateShort?.({ type: 'light', fail() {} }); },
+    effect(name) { if (enabled && foreground) api.vibrateShort?.({ type: name === 'win' ? 'medium' : name === 'lose' ? 'heavy' : 'light', fail() {} }); },
     bind(handlers) {
       const pointer = (e, action) => { const t = (e.changedTouches || e.touches)?.[0]; if (t) action({ x: t.clientX, y: t.clientY, id: t.identifier }); };
       api.onTouchStart(e => { playMusic(); pointer(e, handlers.down); });

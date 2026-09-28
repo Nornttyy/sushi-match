@@ -34,7 +34,7 @@ test('failure recap shows the actual jam and preserves income and game state', (
   assert.equal(result.won, false);
   assert.equal(result.rail.length, 7);
   assert.match(result.detail, /已赚金币保留/);
-  assert.equal(result.secondary, '返回小店');
+  assert.equal(result.secondary, '返回主界面');
   assert.equal(JSON.stringify(lost), before);
 });
 test('three complete cat portraits are bundled with alpha and bounded isolated crops', () => {

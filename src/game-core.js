@@ -1,6 +1,7 @@
 import { generateLayout, randomSource } from './level-generator.js';
 import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
 import { CAMPAIGN_SEALS, areSealNeighbours } from './nori-seals.js';
+import { campaignTimeLimit } from './timer-core.js';
 
 export const INGREDIENTS = Object.freeze({
   rice: { label: '米饭' },
@@ -125,7 +126,7 @@ export const LEVELS = freezeDefinition(CAMPAIGN_LAYOUTS.map(record => {
   }));
   const layerFoods = Array.from({ length: Math.max(...tiles.map(t => t.layer)) + 1 },
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
-  return { ...info, tiles, layoutVersion: 1, layerFoods, top: layerFoods.at(-1),
+  return { ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: 1, layerFoods, top: layerFoods.at(-1),
     layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) };
 }));
 
@@ -271,6 +272,9 @@ function gameForLevel(level, levelIndex = 0) {
     coins: 0,
     combo: 0,
     harvests: 0,
+    timeRemainingMs: level.timeLimitMs ?? null,
+    timeStarted: false,
+    elapsedMs: 0,
     undoTokens: level.undoLimit,
     event: '点没有被压住的食材，七格里凑三份同类。',
     status: 'playing'
@@ -363,6 +367,20 @@ export function canCraftActive(state) {
   return state.status === 'playing' && canCraftActiveInternal(state);
 }
 
+export function advanceGameTime(state, milliseconds) {
+  if (state.status !== 'playing' || !state.timeStarted || !Number.isFinite(milliseconds) || milliseconds <= 0
+    || state.workbench.crafted || canCraftActiveInternal(state)) return { state, changed: false, expired: false };
+  const limited = Number.isFinite(state.timeRemainingMs);
+  const spent = limited ? Math.min(state.timeRemainingMs, milliseconds) : milliseconds;
+  const next = { ...state, elapsedMs: state.elapsedMs + spent,
+    timeRemainingMs: limited ? Math.max(0, state.timeRemainingMs - milliseconds) : null };
+  const expired = limited && next.timeRemainingMs === 0;
+  if (expired) {
+    next.status = 'lost'; next.failureReason = 'timeout'; next.event = '时间到了，已赚金币保留。';
+  }
+  return { state: next, changed: true, expired };
+}
+
 export function selectTile(state, tileId) {
   if (!isTilePickable(state, tileId)) {
     return { state, changed: false, reason: getTile(state, tileId)?.sealed ? 'sealed' : 'covered' };
@@ -370,6 +388,7 @@ export function selectTile(state, tileId) {
 
   const next = clone(state);
   const tile = getTile(next, tileId);
+  next.timeStarted = true;
   tile.active = false;
   insertRailTile(next, tileId);
   next.pickHistory.push(tileId);

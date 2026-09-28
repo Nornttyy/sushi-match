@@ -9,6 +9,8 @@ import { MOTION, jellyPose, flightPose } from '../../src/motion-core.js';
 import { Session } from './session.js';
 import { MENU_PAGES, menuPageIndex, stepMenuPage } from '../../src/menu-pages.js';
 import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, sealPeelPose } from '../../src/nori-seals.js';
+import { createPlayClock, formatTime } from '../../src/timer-core.js';
+import { outcomeSummary } from '../../src/outcome-core.js';
 
 const W = 390;
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
@@ -18,6 +20,7 @@ export class CanvasApp {
     this.p = platform; this.ctx = platform.canvas.getContext('2d'); this.session = new Session(platform);
     this.images = new Map(); this.cache = createTaskCache(); this.hits = []; this.bounce = 0;
     this.motionTime = 0; this.flights = new Map(); this.pulses = new Map(); this.sealPeels = new Map(); this.mergeUntil = 0;
+    this.playClock = createPlayClock(); this.resultGame = null; this.resultStarted = 0;
     this.loading = true; this.loadError = false; this.busyLoading = false; this.startedAt = platform.now();
     this.loaded = 0; this.total = GAME_IMAGES.length + 1; this.packageProgress = 0;
     this.page = Math.floor(this.session.selected / 3); this.tab = 'decor'; this.selectedDecor = null; this.previewTheme = null;
@@ -50,11 +53,20 @@ export class CanvasApp {
     } catch { this.loadError = true; }
     finally { this.busyLoading = false; }
   }
-  hide() { this.hidden = true; this.press = null; this.p.cancelRaf(this.frameId); }
-  show() { if (!this.hidden) return; this.hidden = false; this.lastFrame = this.p.now(); this.resize(); this.frame(); }
+  hide() { this.advanceClock(this.p.now()); this.hidden = true; this.press = null; this.p.cancelRaf(this.frameId); }
+  show() { if (!this.hidden) return; this.hidden = false; this.lastFrame = this.p.now(); this.playClock.reset(this.lastFrame); this.resize(); this.frame(); }
+  advanceClock(now) {
+    const elapsed=this.playClock.sample(now,!this.loading&&!this.hidden&&this.motionTime>=this.mergeUntil);
+    const before=this.session.game,oldSecond=Math.ceil((before?.timeRemainingMs||0)/1000);
+    const expired=this.session.elapse(elapsed);
+    if(expired){this.clearMotion();this.dirty=true;}
+    if(oldSecond!==Math.ceil((this.session.game?.timeRemainingMs||0)/1000))this.dirty=true;
+    return expired;
+  }
   frame() {
     if (this.hidden) return;
     const now = this.p.now(), elapsed = Math.min(50, now-this.lastFrame); this.lastFrame = now;
+    this.advanceClock(now);
     this.motionTime += elapsed;
     const wasMoving = this.flights.size || this.pulses.size || this.sealPeels.size;
     for (const [id, start] of this.sealPeels) if (this.motionTime-start >= SEAL_MOTION_MS) this.sealPeels.delete(id);
@@ -68,7 +80,8 @@ export class CanvasApp {
     const previous = this.session.game, delivery = this.session.delivery;
     if (!this.loading && this.motionTime >= this.mergeUntil) this.session.tick(elapsed);
     const noticeVisible = now < this.messageUntil;
-    if (this.loading || this.dirty || wasMoving || this.pulses.size || delivery || this.session.delivery || previous !== this.session.game || noticeVisible !== this.noticeVisible) {
+    const resultMoving=this.session.scene==='game'&&this.session.game?.status!=='playing'&&this.motionTime-this.resultStarted<2100;
+    if (this.loading || this.dirty || wasMoving || this.pulses.size || delivery || this.session.delivery || previous !== this.session.game || noticeVisible !== this.noticeVisible || resultMoving) {
       this.render(now); this.dirty = false;
     }
     this.noticeVisible = noticeVisible; this.frameId = this.p.raf(() => this.frame());
@@ -96,6 +109,7 @@ export class CanvasApp {
   }
   up(raw) {
     if (!this.press || raw.id !== this.press.id) return;
+    if(this.advanceClock(this.p.now())){this.press=null;this.render(this.p.now());return;}
     const press = this.press; this.press = null;
     this.dirty = true;
     const end=this.point(raw),dx=end.x-press.x,dy=end.y-press.y;
@@ -111,7 +125,7 @@ export class CanvasApp {
       this.render(this.p.now());
     }
   }
-  clearMotion() { this.flights.clear();this.pulses.clear();this.sealPeels.clear();this.mergeUntil=0; }
+  clearMotion() { this.flights.clear();this.pulses.clear();this.sealPeels.clear();this.mergeUntil=0;this.resultGame=null; }
   elastic(key,x,y,w,h,draw,strength=1) {
     const start=this.pulses.get(key),held=this.press?.target?.key===key&&!this.press.moved;
     const pose=held?{sx:1.09,sy:.84,y:3,rotate:0}:jellyPose(start===undefined?-1:(this.motionTime-start)/MOTION.bounce,strength);
@@ -248,6 +262,7 @@ export class CanvasApp {
       this.text('最高 '+s.bestWave+' 波 · 最多 '+s.bestOrders+' 单',195,top+260,12);
     }
     this.text(s.mode==='campaign'?'第 '+(s.selected+1)+' 天 · '+LEVELS[s.selected].name:'七格备料 · 持续挑战',195,bottom-141,18);
+    if(s.mode==='campaign')this.text('限时 '+formatTime(LEVELS[s.selected].timeLimitMs),195,bottom-176,12,'#956c48');
     const orders=[...new Set((s.mode==='campaign'?LEVELS[s.selected]:LEVELS[3]).orders)];
     orders.slice(0,6).forEach((id,i)=>this.food('sushi',RECIPES[id].foodSprite,195-orders.length*16+i*32,bottom-119,28,28));
     const locked=s.mode==='campaign'&&s.selected>s.unlocked;
@@ -309,6 +324,7 @@ export class CanvasApp {
     this.text('订单 '+g.served+'/'+g.customers.length,124,top+24,12);this.text('备料 '+g.rail.length+'/7',226,top+24,12);
     this.button(s.muted?'静音':'♪',326,top+9,49,29,()=>s.toggleSound(),{size:12});
     this.text(g.mode==='endless'?'无尽 · 第 '+g.wave+' 波':'第 '+(g.levelIndex+1)+' 天 · '+s.level.name,15,top+51,11,'#527d77','left');
+    if(Number.isFinite(g.timeRemainingMs))this.text((g.timeStarted?(s.delivery||this.motionTime<this.mergeUntil?'暂停 ':'剩余 '):'点牌开始 ')+formatTime(g.timeRemainingMs),375,top+51,11,g.timeRemainingMs<=20000?'#ae453f':'#376f72','right');
     const customerY=top+65;this.box(12,customerY,366,98,'#fff5df',17);
     getVisibleCustomers(g).forEach((cat,i)=>{const x=40+i*115,pose=jellyPose(i===0&&s.delivery>470?(s.delivery-470)/290:-1,.55);
       this.ctx.save();if(i>0)this.ctx.globalAlpha=.85;this.ctx.translate(x+39,customerY+87+pose.y);this.ctx.scale(pose.sx,pose.sy);this.sprite('cat-portraits-v1.png',CAT_CROPS[cat.skin],-39,-80,78,80);this.ctx.restore();
@@ -338,14 +354,35 @@ export class CanvasApp {
     if(g.status!=='playing')this.drawResult();
   }
   drawResult() {
-    const s=this.session,g=s.game,won=g.status==='won',y=this.H/2-245;this.hits=[];
-    this.box(0,0,W,this.H,'#543b2b99',0);this.box(23,y,344,488,'#fff4db',23,'#c7996b');
-    if(won){['ginger','calico','gray'].forEach((skin,i)=>this.sprite('cat-portraits-v1.png',CAT_CROPS[skin],68+i*91,y+24,68,71));this.sprite('victory-platter-v1.png',null,55,y+76,280,150);}
-    else{this.text(g.failureReason==='sealed'?'封条挡住了食材':'七格备料栏满了',195,y+67,25);getRailTiles(g).forEach((tile,i)=>{this.box(48+i*43,y+110,39,44,'#fff9e7',7,'#c99a72');this.food('ingredient',tile.ingredient,51+i*43,y+114,33,35);});if(g.failureReason==='sealed')this.text('先用邻牌三消揭开封条',195,y+181,13);}
-    this.text(won?(g.mode==='endless'?'第 '+g.wave+' 波完成！':'今日寿司全送达！'):'下次再试试',195,y+255,24,'#a05d3e');
-    this.text(g.served+' / '+g.customers.length+' 单',112,y+306,22);this.text('+'+(g.mode==='endless'?g.runCoins:g.coins)+' 金币',270,y+306,22);
-    this.text(won?'金币已入账':'已赚金币保留',195,y+346,12);
-    this.button(won?(g.mode==='endless'?'继续下一波':g.levelIndex===23?'挑战无尽模式':'下一天'):'重新开始',60,y+375,270,47,()=>s.advance(),{active:true,size:18});
-    this.button(won?'回店布置':'返回小店',121,y+436,148,31,()=>{s.menu();if(won)this.showMenuPage('decor');},{size:12});
+    const s=this.session,g=s.game,summary=outcomeSummary(g),won=summary.won;
+    const height=won?526:438,y=(this.H-height)/2,c=this.ctx;this.hits=[];
+    if(this.resultGame!==g){this.resultGame=g;this.resultStarted=this.motionTime;}
+    const age=this.motionTime-this.resultStarted;
+    this.box(0,0,W,this.H,'#543b2b99',0);this.box(23,y,344,height,'#fff4db',23,'#c7996b');
+    this.text(summary.kicker,195,y+23,11,'#95734f');
+    if(won){
+      ['ginger','calico','gray'].forEach((skin,i)=>this.sprite('cat-portraits-v1.png',CAT_CROPS[skin],68+i*91,y+39,68,71));
+      const reveal=Math.min(1,age/550);c.save();c.translate(195,y+168);c.scale(.85+.15*reveal,.85+.15*reveal);this.sprite('victory-platter-v1.png',null,-140,-72,280,138);c.restore();
+      for(let i=0;i<3;i++){
+        const earned=i<summary.stars,p=Math.max(0,Math.min(1,(age-180-i*220)/520)),scale=earned?.45+.55*p:1;
+        c.save();c.translate(149+i*46,y+232);c.scale(scale,scale);c.globalAlpha=earned?p:1;c.beginPath();
+        for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,r=k%2?8:18;k?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
+        c.closePath();c.fillStyle=earned?'#edb13e':'#dbcdb1';c.fill();c.restore();
+      }
+      c.save();c.beginPath();c.rect(26,y+3,338,height-6);c.clip();
+      for(let i=0;i<18;i++){const p=(age-i%5*80)/1800;if(p<0||p>1)continue;c.save();c.globalAlpha=Math.sin(p*Math.PI)*.7;c.translate(44+i*71%300,y+15+p*270);c.rotate(p*5);this.box(-3,-5,6,10,['#de9c43','#db775d','#76977f'][i%3],2);c.restore();}c.restore();
+    }else if(summary.reason==='timeout'){
+      c.save();c.translate(0,-7*(1-Math.min(1,age/500)));c.beginPath();c.arc(150,y+112,27,0,Math.PI*2);c.strokeStyle='#b36755';c.lineWidth=4;c.stroke();c.beginPath();c.moveTo(150,y+94);c.lineTo(150,y+112);c.lineTo(164,y+116);c.stroke();this.text('0:00',222,y+112,35,'#b36755');c.restore();
+    }else{const width=summary.rail.length*43,x0=(390-width)/2;summary.rail.forEach((id,i)=>{this.box(x0+i*43,y+85,39,44,'#fff9e7',7,'#c99a72');this.food('ingredient',id,x0+3+i*43,y+89,33,35);});}
+    const titleY=won?y+272:y+175;
+    this.text(summary.title,195,titleY,23,'#a05d3e');
+    if(!won)this.text(summary.failureLabel,195,y+207,12,'#ae6250');
+    const statsY=won?y+316:y+255;
+    [[summary.orders,'完成订单'],[summary.elapsed,'操作用时'],['+'+Math.round(summary.coins*Math.min(1,age/680)),'营业收入']].forEach(([value,label],i)=>{this.text(value,85+i*110,statsY,22,'#be7a2e');this.text(label,85+i*110,statsY+24,10,'#95734f');});
+    this.text(summary.detail,195,statsY+49,11);
+    const buttonY=won?y+383:y+326;
+    this.button(summary.primary,60,buttonY,270,44,()=>s.advance(),{active:true,size:18});
+    if(won)this.button(summary.replay,88,buttonY+54,214,34,()=>s.replay(),{size:13});
+    this.button(summary.secondary,121,y+height-42,148,29,()=>s.menu(),{size:12});
   }
 }

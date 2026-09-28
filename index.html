@@ -42,8 +42,11 @@
         </div>
       </header>
 
-      <section class="level-copy" aria-live="polite">
-        <p id="level-name">第 1 天 · 海边开张</p>
+      <section class="level-copy">
+        <p id="level-name" aria-live="polite">第 1 天 · 海边开张</p>
+        <span id="countdown" class="countdown" role="timer" aria-live="off">
+          <span class="clock-face" aria-hidden="true"></span><small id="countdown-label">点牌开始</small><b id="countdown-time">2:00</b>
+        </span>
       </section>
 
       <section class="customer-zone" aria-label="顾客队列">
@@ -90,12 +93,14 @@
           <div id="result-confetti" class="result-confetti" aria-hidden="true"></div>
           <span id="result-kicker" class="result-kicker">营业小结</span>
           <div id="result-art" class="result-art" aria-hidden="true"></div>
+          <div id="result-stars" class="result-stars" role="img" hidden></div>
           <p id="overlay-title">今日寿司全送达！</p>
           <div id="result-stats" class="result-stats"></div>
           <small id="overlay-text"></small>
           <div class="result-actions">
             <button id="overlay-button" type="button">下一天</button>
-            <button id="overlay-menu-button" class="overlay-menu-button" type="button">回店布置</button>
+            <button id="overlay-replay-button" class="overlay-replay-button" type="button" hidden>再玩本关</button>
+            <button id="overlay-menu-button" class="overlay-menu-button" type="button">返回主界面</button>
           </div>
         </div>
       </section>
