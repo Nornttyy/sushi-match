@@ -1,5 +1,6 @@
 import { MIN_LOADING_MS, loadingSnapshot, createTaskCache } from './loading-core.js';
 import { GAME_IMAGES } from './asset-manifest.js';
+import { MOTION, jellyFrames } from './motion-core.js';
 
 const screen = document.querySelector('#loading-screen');
 const shell = document.querySelector('.game-shell');
@@ -67,7 +68,7 @@ async function start() {
 treat.addEventListener('click', () => {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   animation?.cancel();
-  animation = treat.animate([{ transform: 'translateY(0) rotate(0)' }, { transform: 'translateY(-20px) rotate(-7deg)', offset: .42 }, { transform: 'translateY(0) rotate(0)' }], { duration: 430, easing: 'ease-out' });
+  animation = treat.animate(jellyFrames(1.35), { duration: MOTION.bounce, easing: 'linear' });
 });
 retry.addEventListener('click', start);
 void start();

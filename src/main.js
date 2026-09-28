@@ -26,6 +26,8 @@ import { mountShop } from './shop-ui.js';
 import { mountFeedback } from './feedback.js';
 import { createCatPortrait, setCatState } from './cat-portrait.js';
 import { foodIcon, setFoodArt } from './food-art.js';
+import { mountJuice } from './juice.js';
+import { MOTION } from './motion-core.js';
 
 const LEVEL_STORAGE_KEY = 'sushi-stack-kitchen-level';
 const UNLOCK_STORAGE_KEY = 'sushi-stack-kitchen-unlocked-level';
@@ -111,6 +113,7 @@ let resolveEpoch = 0;
 const sounds = new GameSound();
 const shop = mountShop({ root: mainMenu, onSound: name => sounds.play(name) });
 const feedback = mountFeedback({ overlay, gameShell, ingredientIcon });
+const juice = mountJuice({ board: tileBoard, rail: ingredientRail, prep: document.querySelector('.recipe-plate') });
 sounds.onPlaybackChange = syncMenuMusic;
 
 function ingredientIcon(ingredient, className = '') {
@@ -266,22 +269,30 @@ function currentRecipeNeeds(ingredient) {
   return totalNeeded > (state.pantry[ingredient] || 0);
 }
 
+const tileNodes = new Map();
 function renderTileBoard() {
-  tileBoard.replaceChildren();
   const visible = getVisibleTiles(state);
   const visibleIds = new Set(visible.map((tile) => tile.id));
   const activeTiles = state.tiles.filter((tile) => tile.active);
   activeTiles.sort((left, right) => left.layer - right.layer || left.y - right.y || left.x - right.x);
 
-  activeTiles.forEach((tile) => {
+  const activeIds = new Set(activeTiles.map(tile => tile.id));
+  for (const [id, node] of tileNodes) if (!activeIds.has(id)) { node.remove(); tileNodes.delete(id); }
+  activeTiles.forEach((tile, index) => {
     const isUncovered = visibleIds.has(tile.id) && isTilePickable(state, tile.id);
     const canInteract = isUncovered && !isResolving && !isMenuOpen;
     const newlyRevealed = isUncovered && !previousVisibleTiles.has(tile.id);
-    const button = document.createElement('button');
+    let button = tileNodes.get(tile.id);
+    if (!button) {
+      button = document.createElement('button');
+      const plate = document.createElement('span'); plate.className = 'stack-plate'; button.append(plate);
+      button.addEventListener('animationend', event => { if (event.target === button) button.classList.remove('is-revealed'); });
+      tileNodes.set(tile.id, button);
+    }
     button.type = 'button';
     button.className = 'stack-tile'
       + (isUncovered ? ' is-pickable' : ' is-covered')
-      + (newlyRevealed ? ' is-revealed' : '')
+      + (newlyRevealed || (isUncovered && button.classList.contains('is-revealed')) ? ' is-revealed' : '')
       + (isUncovered && getLevel(state).assist && currentRecipeNeeds(tile.ingredient) ? ' is-wanted' : '')
       + ' layer-' + tile.layer;
     button.style.setProperty('--x', tile.x + '%');
@@ -292,13 +303,11 @@ function renderTileBoard() {
     button.disabled = !canInteract;
     button.setAttribute('aria-label', isUncovered ? INGREDIENTS[tile.ingredient].label : '被上方食材压住');
 
-    const plate = document.createElement('span');
-    plate.className = 'stack-plate';
-    if (isUncovered) {
-      plate.append(ingredientIcon(tile.ingredient, 'stack-food'));
-    }
-    button.append(plate);
-    tileBoard.append(button);
+    const plate = button.firstElementChild;
+    if (isUncovered && !plate.firstChild) plate.append(ingredientIcon(tile.ingredient, 'stack-food'));
+    else if (isUncovered) setFoodArt(plate.firstChild, 'ingredient', tile.ingredient);
+    else if (!isUncovered) plate.replaceChildren();
+    if (tileBoard.children[index] !== button) tileBoard.insertBefore(button, tileBoard.children[index] || null);
   });
   previousVisibleTiles = visibleIds;
   tileBoard.classList.toggle('is-generated', getLevel(state).footprint.y === 26);
@@ -367,6 +376,7 @@ function renderIngredientRail() {
       + (item ? ' is-filled' : '')
       + (item && counts[item.ingredient] === 2 ? ' is-pair' : '');
     if (item) {
+      slot.dataset.railId = item.id;
       slot.append(ingredientIcon(item.ingredient, 'rail-food'));
       if (counts[item.ingredient] === 2) {
         const badge = document.createElement('b');
@@ -379,10 +389,11 @@ function renderIngredientRail() {
   }
   undoButton.disabled = isResolving || isMenuOpen || state.status !== 'playing' || items.length === 0 || state.undoTokens <= 0;
   undoButton.textContent = state.undoTokens > 0 ? '撤回 ×' + state.undoTokens : '撤回用完';
+  juice.sync();
 }
 
 function renderOverlay() {
-  feedback.render(state, isMenuOpen);
+  feedback.render(state, isMenuOpen || (isResolving && state.status === 'lost'));
 }
 
 function render() {
@@ -481,7 +492,7 @@ async function resolveAutoOrders() {
       state.event = getRecipe(crafted.recipe).label + '做好了，自动递给顾客！';
       sounds.play('craft');
       render();
-      await pause(210);
+      await pause(MOTION.craft);
       continue;
     }
 
@@ -521,7 +532,7 @@ async function resolveAutoOrders() {
   }
 }
 
-function chooseTile(tileId) {
+async function chooseTile(tileId) {
   if (isResolving || isMenuOpen) {
     return;
   }
@@ -530,14 +541,21 @@ function chooseTile(tileId) {
     showMessage('这张食材还被上面的牌压着。');
     return;
   }
+  const snapshot = juice.capture(state.tiles.find(tile => tile.id === tileId), getRailTiles(state));
+  const epoch = resolveEpoch;
   state = result.state;
+  // A merge has a short visual resolution; ordinary picks remain rapid-fire.
+  isResolving = !!result.harvested || state.status === 'lost';
   sounds.play(result.harvested ? 'triple' : 'pick');
   if (state.status === 'lost') {
     recordEndless();
     sounds.play('lose');
   }
   render();
-  void resolveAutoOrders();
+  await juice.pick(snapshot, result.harvested);
+  if (epoch !== resolveEpoch || isMenuOpen) return;
+  if (state.status === 'lost') { isResolving = false; render(); return; }
+  if (result.harvested) { isResolving = false; render(); void resolveAutoOrders(); }
 }
 
 function undoPick() {
@@ -552,11 +570,13 @@ function undoPick() {
     return;
   }
   state = result.state;
+  juice.clear();
   sounds.play('undo');
   render();
 }
 
 function restart(levelIndex = state.levelIndex) {
+  juice.clear();
   resolveEpoch += 1;
   isResolving = false;
   clearHandoff();
@@ -568,6 +588,7 @@ function restart(levelIndex = state.levelIndex) {
 }
 
 function showMainMenu() {
+  juice.clear();
   if (state.mode === 'endless') endlessSession = state;
   resolveEpoch += 1;
   isResolving = false;
@@ -610,6 +631,7 @@ function newEndlessGame() {
 }
 
 function installEndless(next) {
+  juice.clear();
   resolveEpoch++;
   isResolving = false;
   clearHandoff();

@@ -1,0 +1,41 @@
+/* Animation overlays never catch input or change a card's hit area. */
+.juice-layer { position:fixed; inset:0; z-index:35; pointer-events:none; overflow:hidden; }
+.juice-card { position:absolute; left:0; top:0; display:grid; place-items:center; padding:3px; border:2px solid #fff3d9; border-radius:12px; background:#fffaf0; box-shadow:inset 0 -3px #e3cba5,0 4px 0 #79523b30; transform-origin:center; will-change:transform,opacity; }
+.juice-card .ingredient-icon { width:92%; height:92%; }
+.juice-card.is-merging { border-color:#ffd682; }
+.rail-slot.is-arriving { background:#71677e; border-color:#352f3f; box-shadow:inset 0 2px #ffffff2b; }
+.rail-slot.is-arriving > * { visibility:hidden; }
+/* Feedback belongs to the changed item, not every item rebuilt by render(). */
+.rail-slot.is-filled, .recipe-slot.is-filled, .pantry-item { animation:none; }
+.stack-plate, .crafted-sushi, .rail-slot { transform-origin:center 75%; }
+.stack-tile.is-pickable:active { transform:translate(-50%,-50%) rotate(var(--tilt)); }
+@keyframes soft-reveal {
+  0% { opacity:0; transform:translate(-50%,-50%) rotate(var(--tilt)) scale(1.12,.68); }
+  35% { opacity:1; transform:translate(-50%,-55%) rotate(var(--tilt)) scale(.91,1.1); }
+  66% { transform:translate(-50%,-49%) rotate(var(--tilt)) scale(1.035,.965); }
+  100% { transform:translate(-50%,-50%) rotate(var(--tilt)); }
+}
+.stack-tile.is-revealed { animation:soft-reveal 390ms ease-out both; }
+.crafted-plate.is-ready { animation:soft-craft 340ms ease-out both; }
+.handoff-fx.is-flying { animation:soft-handoff 360ms linear both; }
+@keyframes soft-handoff {
+  0% { opacity:1; transform:translate(-50%,-50%) scale(1.13,.78) rotate(-6deg); }
+  35% { opacity:1; transform:translate(calc(-50% + var(--fly-x)*.48),calc(-50% + var(--fly-y)*.62 - 24px)) scale(.87,1.13) rotate(6deg); }
+  72% { opacity:1; transform:translate(calc(-50% + var(--fly-x)),calc(-50% + var(--fly-y) - 8px)) scale(.92,1.08) rotate(0); }
+  88% { opacity:1; transform:translate(calc(-50% + var(--fly-x)),calc(-50% + var(--fly-y))) scale(1.13,.8); }
+  100% { opacity:0; transform:translate(calc(-50% + var(--fly-x)),calc(-50% + var(--fly-y) - 3px)) scale(.9,1.05); }
+}
+@keyframes soft-craft {
+  0% { opacity:0; transform:scale(1.2,.6); }
+  35% { opacity:1; transform:translateY(-7px) scale(.85,1.19); }
+  70% { transform:scale(1.09,.91); }
+  100% { opacity:1; transform:scale(1); }
+}
+.customer-portrait.cat-portrait[data-state='receiving'] { animation:cat-soft-receive 230ms ease-out; }
+.customer-portrait.cat-portrait[data-state='happy'] { animation:cat-soft-happy 280ms ease-out; }
+@keyframes cat-soft-receive { 0%,100% { transform:scale(1); } 30% { transform:translateY(2px) scale(1.08,.91); } 65% { transform:translateY(-4px) scale(.96,1.04); } }
+@keyframes cat-soft-happy { 0%,100% { transform:scale(1); } 30% { transform:translateY(-7px) rotate(-2deg) scale(.96,1.05); } 68% { transform:translateY(1px) rotate(1deg) scale(1.045,.955); } }
+@media (prefers-reduced-motion:reduce) {
+  .juice-layer { display:none; }
+  .game-shell *, .loading-screen * { animation:none !important; transition:none !important; }
+}
