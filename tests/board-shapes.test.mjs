@@ -6,20 +6,24 @@ import {LEVELS,createGame,getVisibleTiles,isTilePickable,selectTile,canCraftActi
 import {BOARD_SHAPES,shapeBoardFrame,drawShapeGuide,svgPath} from '../src/board-shapes.js';
 import {shapeDesign} from '../scripts/shape-positions.mjs';
 
-test('opening six boards alternate three authored silhouettes; days 7–24 are unchanged',()=>{
+test('all 24 boards use authored silhouettes, preserving the opening and campaign economy',()=>{
   assert.deepEqual(LEVELS.slice(0,6).map(l=>l.shape),['roll','fish','duo','roll','fish','duo']);
-  assert.deepEqual(LEVELS.slice(0,6).map(l=>l.tiles.length),[18,24,24,30,33,33]);
-  assert.equal(createHash('sha256').update(JSON.stringify(CAMPAIGN_LAYOUTS.slice(6))).digest('hex'),'b081b0f454da04843b546897d0c8a21602239c14e678e8dbc89d9f605d99429b');
-  for(const l of LEVELS.slice(0,6)){
+  assert.deepEqual(LEVELS.slice(6).map(l=>l.shape),Array.from({length:3},()=>['roll','fish-left','duo-stagger','roll-wide','fish','duo']).flat());
+  assert.deepEqual(LEVELS.map(l=>l.tiles.length),[18,24,24,30,33,33,42,42,45,51,54,51,60,60,60,69,69,66,75,75,75,75,75,75]);
+  const hash=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
+  assert.equal(hash(CAMPAIGN_LAYOUTS.slice(0,6)),'320d5110b85e28eca34da235e069a50e048e79b6a62c43ef849e89b977223914');
+  assert.equal(hash(CAMPAIGN_LAYOUTS.map(l=>({id:l.id,orders:l.orders,railLimit:l.railLimit,undoLimit:l.undoLimit}))),
+    '86fcec05d946dc1d69c7588f9ecc8218c458bf4ec605653a9e3fcf243ad2b0e3');
+  for(const l of LEVELS){
     const authored=shapeDesign(l.id,l.tiles.length);
     assert.deepEqual(l.tiles.map(({x,y,layer,tilt})=>({x,y,layer,tilt})),authored.positions);
-    assert.equal(l.railLimit,7);assert.equal(l.layoutVersion,3);
+    assert.equal(l.railLimit,7);assert.equal(l.layoutVersion,l.id<=6?3:4);
     assert.ok(getVisibleTiles(createGame(l.id-1)).length>=6);
   }
 });
 
 test('shape cards stay inside their frame and no same-layer cards visually overlap',()=>{
-  for(const l of LEVELS.slice(0,6))for(const t of l.tiles){
+  for(const l of LEVELS)for(const t of l.tiles){
     assert.ok(t.x>=l.footprint.x/2&&t.x<=100-l.footprint.x/2);
     assert.ok(t.y>=l.footprint.y/2&&t.y<=100-l.footprint.y/2);
     for(const other of l.tiles.filter(o=>o!==t&&o.layer===t.layer))
@@ -28,15 +32,17 @@ test('shape cards stay inside their frame and no same-layer cards visually overl
 });
 
 test('rolls have a ring and core, fish have a narrow neck, and duo recipes cross the plate gap',()=>{
-  for(const l of LEVELS.slice(0,6)){
+  for(const l of LEVELS){
     const base=l.tiles.filter(t=>t.layer===0);
-    if(l.shape==='roll'){
-      assert.ok(base.some(t=>Math.hypot(t.x-50,t.y-48)<4));
-      assert.ok(base.filter(t=>Math.hypot(t.x-50,t.y-48)>20).length>=8);
-    }else if(l.shape==='fish'){
-      assert.equal(base.filter(t=>t.x<20).length,3,'fan tail');
-      assert.equal(base.filter(t=>t.x>20&&t.x<40).length,1,'narrow neck');
-      assert.equal(base.filter(t=>t.x>80).length,2,'nose');
+    if(l.shape.startsWith('roll')){
+      const cy=l.shape==='roll-wide'?50:48;
+      assert.ok(base.some(t=>Math.hypot(t.x-50,t.y-cy)<5));
+      assert.ok(base.filter(t=>Math.hypot(t.x-50,t.y-cy)>20).length>=8);
+    }else if(l.shape.startsWith('fish')){
+      const xs=base.map(t=>l.shape==='fish-left'?100-t.x:t.x);
+      assert.equal(xs.filter(x=>x<20).length,3,'fan tail');
+      assert.equal(xs.filter(x=>x>20&&x<40).length,1,'narrow neck');
+      assert.equal(xs.filter(x=>x>80).length,2,'nose');
     }else{
       assert.ok(l.tiles.every(t=>Math.abs(t.x-50)>10),'visible central gap');
       const counts={};for(const t of l.tiles.filter(t=>t.x<50))counts[t.ingredient]=(counts[t.ingredient]||0)+1;
@@ -45,16 +51,35 @@ test('rolls have a ring and core, fish have a narrow neck, and duo recipes cross
   }
 });
 
-test('all six shape routes use real cover, seal and seven-slot rules, without undo',()=>{
-  for(const l of LEVELS.slice(0,6)){
-    let s=createGame(l.id-1);const original=structuredClone(s);
+test('all 24 shape routes use real cover, seal and seven-slot rules, without undo',()=>{
+  for(const l of LEVELS){
+    let s=createGame(l.id-1);const original=structuredClone(s),firstPeels=new Set();
     for(const id of l.solution){
-      assert.ok(isTilePickable(s,id));s=selectTile(s,id).state;assert.notEqual(s.status,'lost');assert.ok(s.rail.length<7);
+      assert.ok(isTilePickable(s,id));const result=selectTile(s,id);
+      for(const peel of result.peeled)if(!firstPeels.has(peel.id)){
+        assert.ok(getVisibleTiles(s).some(t=>t.id===peel.id),`day ${l.id}: show the full wrap before its first peel`);
+        firstPeels.add(peel.id);
+      }
+      s=result.state;assert.notEqual(s.status,'lost');assert.ok(s.rail.length<7);
       while(s.workbench.crafted||canCraftActive(s))s=s.workbench.crafted?serveActiveCustomer(s).state:craftActiveSushi(s).state;
     }
     assert.equal(s.status,'won');assert.equal(s.undoTokens,l.undoLimit);assert.equal(s.served,l.orders.length);
     assert.deepEqual(createGame(l.id-1),original,'retry preserves every position, ingredient and wrap');
   }
+});
+
+test('later variants alter the real geometry and layer offsets, not just the tray artwork',()=>{
+  const positions=(day,count)=>shapeDesign(day,count).positions;
+  assert.deepEqual(positions(8,12).map(t=>t.x),positions(11,12).map(t=>100-t.x-3));
+  const stagger=positions(9,12);
+  assert.equal(stagger.find(t=>t.x>50).y-stagger[0].y,16);
+  const round=positions(7,9),wide=positions(10,9);
+  assert.ok(Math.max(...wide.map(t=>t.x))-Math.min(...wide.map(t=>t.x))>
+    Math.max(...round.map(t=>t.x))-Math.min(...round.map(t=>t.x)));
+  assert.notDeepEqual(positions(7,42),positions(13,42));
+  assert.notDeepEqual(positions(13,42),positions(19,42));
+  for(const [shape,definition] of Object.entries(BOARD_SHAPES))for(const p of definition.paths)
+    for(const [, ...values] of p.commands)assert.ok(values.every(n=>Number.isFinite(n)&&n>=0&&n<=100),shape);
 });
 
 test('shared shape framing is bounded on short and tall phones and needs no native DOM or Path2D',()=>{

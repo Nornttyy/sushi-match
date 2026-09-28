@@ -35,28 +35,32 @@ function designSeals(layout, day) {
 }
 
 const designs=[];
+// Authored revisions keep difficulty tuning local to one day, without
+// changing the other fixed boards or any player's progress.
+const revisions={21:2};
 for(const record of CAMPAIGN_LAYOUTS){
-  if(record.id>6){designs.push(record);continue;}
+  if(record.id<=6){designs.push(record);continue;}
   const {cards,solution,seals,designVersion,designSeed,...info}=record;
   const shape=shapeDesign(info.id,cards.length);
-  let chosen;
-  for(let attempt=0;attempt<120&&!chosen;attempt++){
-    const seed=(0x51f151+info.id*7919+attempt*104729)>>>0;
+  let chosen,mixed=0;
+  for(let attempt=0;attempt<2400&&!chosen;attempt++){
+    const seed=(0x51f151+info.id*7919+attempt*104729+(revisions[info.id]||0))>>>0;
     const layout=generateLayout({id:info.id,groups:info.orders.flatMap(id=>RECIPES[id].ingredients),seed,rank:info.id,
       positions:shape.positions,footprint:shape.footprint,attempts:256});
     const mix=layoutMixMetrics(layout.tiles,shape.footprint);
     if(mix.largestCluster>2||mix.dominance>0)continue;
+    mixed++;
     const nextSeals=designSeals(layout,info.id);if(!nextSeals)continue;
     const ids=new Map(layout.tiles.map((t,i)=>[t.id,i]));
-    chosen={...info,shape:shape.shape,name:shape.name,footprint:shape.footprint,designVersion:3,designSeed:seed,
+    chosen={...info,shape:shape.shape,name:shape.name,footprint:shape.footprint,designVersion:4,designSeed:seed,
       cards:layout.tiles.map(t=>[t.ingredient,t.layer,t.x,t.y,t.tilt]),solution:layout.solution.map(id=>ids.get(id)),seals:nextSeals};
   }
-  if(!chosen)throw Error('No bounded, mixed, sealed design for day '+info.id);
+  if(!chosen)throw Error('No bounded, mixed, sealed design for day '+info.id+' ('+mixed+' mixed candidates)');
   designs.push(chosen);
 }
 if(process.argv.includes('--patch')){
   const old=readFileSync(new URL('../src/campaign-layouts.js',import.meta.url),'utf8');
-  const fresh='// Fixed campaign: shaped opening six days, classic days 7–24. Cards: [ingredient, layer, x%, y%, tilt].\n'
+  const fresh='// Fixed campaign: 24 authored roll, fish and double-platter boards. Cards: [ingredient, layer, x%, y%, tilt].\n'
     +'// Authored offline with design-campaign.mjs; seals: [card index, layers].\n'
     +'// Every saved witness is replayed with the actual seven-slot, seal and timer rules.\n'
     +'export const CAMPAIGN_LAYOUTS = [\n'+designs.map(r=>'  '+JSON.stringify(r)).join(',\n')+'\n];\n';

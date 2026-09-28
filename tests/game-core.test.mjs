@@ -19,6 +19,7 @@ import {
   serveActiveCustomer,
   undoRailPick
 } from '../src/game-core.js';
+import {areSealNeighbours} from '../src/nori-seals.js';
 
 function pickTriple(state, ingredient) {
   const before = state.pantry[ingredient];
@@ -48,7 +49,9 @@ function stateKey(state) {
     state.status,
     state.tiles.filter((tile) => tile.active).map((tile) => tile.id).join(','),
     state.tiles.filter((tile) => tile.sealed).map((tile) => tile.id+':'+tile.sealLayers).join(','),
-    state.rail.join(','),
+    // The solver never undoes: order in the rail cannot affect matching or
+    // seal adjacency. Keep source identities, but deduplicate permutations.
+    [...state.rail].sort().join(','),
     Object.values(state.pantry).join(','),
     state.served,
     state.workbench.crafted?.recipeId || ''
@@ -58,14 +61,14 @@ function stateKey(state) {
 /* A small solver proves each authored stack has at least one legal full route. */
 function findWinningState(initialState) {
   const visited = new Set();
-  let searched = 0;
+  let searched = 0,limit=10000,sealAware=false;
 
   function search(input) {
     const state = advanceOrder(input);
     if (state.status === 'won') {
       return state;
     }
-    if (state.status !== 'playing' || searched > 20000) {
+    if (state.status !== 'playing' || searched >= limit) {
       return null;
     }
     const key = stateKey(state);
@@ -79,9 +82,19 @@ function findWinningState(initialState) {
       counts[tile.ingredient] = (counts[tile.ingredient] || 0) + 1;
       return counts;
     }, {});
-    const choices = getVisibleTiles(state).filter(tile => isTilePickable(state, tile.id)).sort((left, right) =>
-      (railCounts[right.ingredient] || 0) - (railCounts[left.ingredient] || 0)
-    );
+    const choices = getVisibleTiles(state).filter(tile => isTilePickable(state, tile.id));
+    const visibleCounts=choices.reduce((counts,tile)=>{
+      counts[tile.ingredient]=(counts[tile.ingredient]||0)+1;return counts;
+    },{});
+    // Prefer a triple that is already accessible and neighbours of a wrapped
+    // card. This solver does not consult the authored witness or hidden food.
+    const priority=tile=>{
+      const held=railCounts[tile.ingredient]||0;
+      const complete=held+visibleCounts[tile.ingredient]>=3;
+      const seals=state.tiles.filter(t=>t.active&&t.sealed&&areSealNeighbours(t,tile)).length;
+      return sealAware?held*10+(complete?30:0)+seals*2+tile.layer*.1:held;
+    };
+    choices.sort((left,right)=>priority(right)-priority(left));
     for (const tile of choices) {
       const result = search(selectTile(state, tile.id).state);
       if (result) {
@@ -91,8 +104,12 @@ function findWinningState(initialState) {
     return null;
   }
 
-  const result = search(initialState);
-  assert.ok(result, 'the authored board should have a valid complete route');
+  // Two ordinary strategies share a finite 20,000-state budget: fill held
+  // pairs first, then prefer exposed triples / peelable neighbours. Neither
+  // reads the saved witness, changes the rules, or grants a free undo.
+  let result = search(initialState);
+  if(!result){visited.clear();limit=20000;sealAware=true;result=search(initialState);}
+  assert.ok(result, 'day '+(initialState.levelIndex+1)+' must have a discoverable complete route within 20,000 states');
   return result;
 }
 
@@ -185,8 +202,8 @@ test('a legal seven-pick sequence with no triple loses the round', () => {
   lossPath.forEach((id) => assert.equal(state.tiles.find((tile) => tile.id === id).active, false));
 });
 
-test('every authored level has a legal route that crafts and serves every order', () => {
-  LEVELS.forEach((level, index) => {
+LEVELS.forEach((level,index)=>{
+  test('day '+level.id+' has an independently discoverable route that crafts and serves every order',()=>{
     const result = findWinningState(createGame(index));
     assert.equal(result.status, 'won', level.name);
     assert.equal(result.served, level.orders.length);

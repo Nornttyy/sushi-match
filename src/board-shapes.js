@@ -3,8 +3,8 @@
 const oval=(cx,cy,rx,ry)=>[['M',cx-rx,cy],['C',cx-rx,cy-ry*.552,cx-rx*.552,cy-ry,cx,cy-ry],
   ['C',cx+rx*.552,cy-ry,cx+rx,cy-ry*.552,cx+rx,cy],['C',cx+rx,cy+ry*.552,cx+rx*.552,cy+ry,cx,cy+ry],
   ['C',cx-rx*.552,cy+ry,cx-rx,cy+ry*.552,cx-rx,cy],['Z']];
-const plate=(x,w)=>[['M',x+7,5],['L',x+w-7,5],['Q',x+w,5,x+w,12],['L',x+w,88],
-  ['Q',x+w,95,x+w-7,95],['L',x+7,95],['Q',x,95,x,88],['L',x,12],['Q',x,5,x+7,5],['Z']];
+const plate=(x,w,y=5,h=90)=>[['M',x+7,y],['L',x+w-7,y],['Q',x+w,y,x+w,y+7],['L',x+w,y+h-7],
+  ['Q',x+w,y+h,x+w-7,y+h],['L',x+7,y+h],['Q',x,y+h,x,y+h-7],['L',x,y+7],['Q',x,y,x+7,y],['Z']];
 const path=(commands,fill,stroke,width=1.2)=>({commands,fill,stroke,width});
 export const BOARD_SHAPES={
   roll:{label:'寿司卷',ratio:.9,paths:[
@@ -20,8 +20,20 @@ export const BOARD_SHAPES={
   duo:{label:'双拼餐盘',ratio:.92,paths:[
     path(plate(1,46),'#e4edce','#8ba579'),path(plate(53,46),'#fbe0c7','#ca9d7c'),
     path(plate(4,40),'none','#faf8db',.9),path(plate(56,40),'none','#fff0d8',.9)
+  ]},
+  'roll-wide':{label:'横切寿司卷',ratio:.9,paths:[
+    path(oval(50,50,49,40),'#789671','#527450'),
+    path(oval(50,50,44,35),'#fff4d5','#d4d9a1'),
+    path(oval(50,50,20,17),'#f7cba6','#e3b78f')
+  ]},
+  'duo-stagger':{label:'错位双拼',ratio:.92,paths:[
+    path(plate(1,46,1,81),'#e4edce','#8ba579'),path(plate(53,46,18,81),'#fbe0c7','#ca9d7c'),
+    path(plate(4,40,4,75),'none','#faf8db',.9),path(plate(56,40,21,75),'none','#fff0d8',.9)
   ]}
 };
+BOARD_SHAPES['fish-left']={label:'逆游小鱼',ratio:BOARD_SHAPES.fish.ratio,
+  paths:BOARD_SHAPES.fish.paths.map(p=>({...p,commands:p.commands.map(([cmd,...values])=>
+    [cmd,...values.map((n,i)=>i%2===0?100-n:n)])}))};
 function freeze(value){if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;}
 freeze(BOARD_SHAPES);
 
