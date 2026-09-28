@@ -55,7 +55,7 @@ export class CanvasApp {
     this.motionTime += elapsed;
     const wasMoving = this.flights.size || this.pulses.size;
     for (const [id, flight] of this.flights) if (this.motionTime-flight.start >= flight.duration) {
-      this.flights.delete(id); this.pulses.set(flight.merge?'prep':'rail:'+id,this.motionTime);
+      this.flights.delete(id); if(flight.merge)this.pulses.set('prep',this.motionTime);
     }
     for (const [id, start] of this.pulses) if (this.motionTime-start >= MOTION.bounce) this.pulses.delete(id);
     if (this.loading && loadingSnapshot({ startedAt: this.startedAt, now, done: this.loaded, total: this.total, failed: Number(this.loadError) }).ready) {
@@ -116,19 +116,19 @@ export class CanvasApp {
     for(const [index,item] of before.entries()){
       if(merge&&item.ingredient===tile.ingredient)continue;
       const nextIndex=after.findIndex(t=>t.id===item.id);if(nextIndex===index)continue;
-      const current=this.flights.get(item.id),source=current?flightPose((this.motionTime-current.start)/current.duration,current.from,current.to,current.merge):this.railRect(index);
+      const current=this.flights.get(item.id),source=current?flightPose((this.motionTime-current.start)/current.duration,current.from,current.to,current.merge,!current.merge):this.railRect(index);
       this.flights.set(item.id,{id:item.id,ingredient:item.ingredient,from:source,to:this.railRect(nextIndex),start:this.motionTime,duration:MOTION.pick,merge:false});
     }
     const target=merge?{x:215,y:this.H-this.bottom-139,w:37,h:37}:this.railRect(this.session.game.rail.indexOf(tile.id));
     const ingredients=merge?[...matches,tile]:[tile];
-    for(const item of ingredients){const current=this.flights.get(item.id),source=item.id===tile.id?from:current?flightPose((this.motionTime-current.start)/current.duration,current.from,current.to,current.merge):this.railRect(before.findIndex(t=>t.id===item.id));
+    for(const item of ingredients){const current=this.flights.get(item.id),source=item.id===tile.id?from:current?flightPose((this.motionTime-current.start)/current.duration,current.from,current.to,current.merge,!current.merge):this.railRect(before.findIndex(t=>t.id===item.id));
       this.flights.set(item.id,{id:item.id,ingredient:item.ingredient,from:source,to:target,start:this.motionTime,duration,merge});
     }
     if(merge)this.mergeUntil=this.motionTime+duration;
   }
   drawFlights() {
     for(const flight of this.flights.values()){
-      const pose=flightPose((this.motionTime-flight.start)/flight.duration,flight.from,flight.to,flight.merge),c=this.ctx;
+      const pose=flightPose((this.motionTime-flight.start)/flight.duration,flight.from,flight.to,flight.merge,!flight.merge),c=this.ctx;
       c.save();c.globalAlpha=pose.opacity;c.translate(pose.x,pose.y);c.rotate(pose.rotate*Math.PI/180);
       this.box(-pose.w/2,-pose.h/2+3,pose.w,pose.h,'#cbaa83',9);this.box(-pose.w/2,-pose.h/2,pose.w,pose.h,'#fff9e8',9,flight.merge?'#f3ce83':'#fff2d6');
       this.food('ingredient',flight.ingredient,-pose.w*.44,-pose.h*.44,pose.w*.88,pose.h*.88);c.restore();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { jellyPose, flightPose, jellyFrames, MOTION } from '../src/motion-core.js';
+import { jellyPose, settlePose, flightPose, jellyFrames, MOTION } from '../src/motion-core.js';
 import { CanvasApp } from '../wechat/src/canvas-app.js';
 import { LEVELS, getRailTiles, getVisibleTiles } from '../src/game-core.js';
 
@@ -18,6 +18,23 @@ test('food follows an arc and reaches the actual destination without drift or a 
   assert.deepEqual(flightPose(1,from,to),{...to,rotate:0,opacity:1});
   assert.equal(flightPose(1,from,to,true).opacity,0);
   for(let i=0;i<=1000;i++){const p=flightPose(i/1000,from,to);assert.ok(Object.values(p).every(Number.isFinite));assert.ok(p.w>0&&p.h>0&&p.opacity>=0&&p.opacity<=1);}
+});
+test('rail landing presses once, releases slowly, and never rotates or bounces above rest',()=>{
+  let previous=1;
+  for(let i=0;i<=1000;i++){
+    const t=i/1000,p=settlePose(t);
+    assert.equal(p.rotate,0);assert.ok(p.y>=0&&p.y<=1.6);
+    assert.ok(p.sy>=.93-1e-10&&p.sy<=1);assert.ok(p.sx>=1&&p.sx<=1.055+1e-10);
+    if(i<=300)assert.ok(p.sy<=previous+1e-10);else assert.ok(p.sy>=previous-1e-10);
+    previous=p.sy;
+  }
+  const from={x:120,y:260,w:70,h:70},to={x:46,y:730,w:40,h:40};
+  for(let i=440;i<=1000;i++){
+    const p=flightPose(i/1000,from,to,false,true);
+    assert.equal(p.x,to.x);assert.equal(p.rotate,0);assert.ok(p.y>=to.y-1e-10);
+  }
+  assert.ok(MOTION.pick*.56>=350,'the landing gets time to settle');
+  assert.deepEqual(flightPose(1,from,to,false,true),{...to,rotate:0,opacity:1});
 });
 
 function appHarness(){
@@ -54,4 +71,10 @@ test('a grouped insert retargets older airborne cards to their new rail slots',(
   const rail=getRailTiles(app.session.game);assert.deepEqual(rail.map(t=>t.ingredient),['salmon','salmon','rice']);
   rail.forEach((tile,index)=>assert.equal(app.flights.get(tile.id).to.x,app.railRect(index).x));
   step(MOTION.pick+MOTION.bounce+100);assert.equal(app.flights.size,0);
+});
+test('native rail arrival cannot start a second bounce after the flight settles',()=>{
+  const {app,step}=appHarness();
+  const tile=getVisibleTiles(app.session.game)[0];app.pickTile(tile,{x:100,y:270,w:65,h:65});
+  step(MOTION.pick+20);assert.equal(app.flights.size,0);assert.equal(app.pulses.size,0);
+  assert.equal(getRailTiles(app.session.game)[0].id,tile.id);
 });

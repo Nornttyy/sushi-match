@@ -34,10 +34,10 @@ export function mountJuice({ board, rail, prep }) {
     const node=document.createElement('span');node.className='juice-card'+(merge?' is-merging':'');node.dataset.flightId=tile.id;
     node.style.width=from.w+'px';node.style.height=from.h+'px';node.append(foodIcon('ingredient',tile.ingredient));layer.append(node);
     const entry={node,to};flights.set(tile.id,entry);sync();
-    const frames=Array.from({length:41},(_,i)=>{const p=flightPose(i/40,from,to,merge);return {offset:i/40,opacity:p.opacity,transform:`translate(${p.x-from.w/2}px, ${p.y-from.h/2}px) rotate(${p.rotate}deg) scale(${p.w/from.w}, ${p.h/from.h})`};});
+    const frames=Array.from({length:41},(_,i)=>{const p=flightPose(i/40,from,to,merge,!merge);return {offset:i/40,opacity:p.opacity,transform:`translate(${p.x-from.w/2}px, ${p.y-from.h/2}px) rotate(${p.rotate}deg) scale(${p.w/from.w}, ${p.h/from.h})`};});
     return track(node,frames,merge?MOTION.merge:MOTION.pick,()=>{
       node.remove();if(flights.get(tile.id)!==entry)return;flights.delete(tile.id);sync();
-      if(!merge)bounce(rail.querySelector('[data-rail-id="'+tile.id+'"]'),.45);
+      // The flight already settled; the real slot must not replay a bounce.
     });
   }
   function pick(snapshot,harvested) {
