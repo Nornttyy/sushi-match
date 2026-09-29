@@ -586,6 +586,7 @@ async function resolveAutoOrders() {
       state.event = getRecipe(crafted.recipe).label + '做好了，自动递给顾客！';
       sounds.play('craft');
       render();
+      juice.craft();
       await pause(MOTION.craft);
       continue;
     }
@@ -607,6 +608,8 @@ async function resolveAutoOrders() {
     if (!result.changed) {
       break;
     }
+    juice.obstacles(state,result.state);
+    juice.reward(customerRail.querySelector('[data-customer-id="'+crafted.customerId+'"]'),coinCount.parentElement);
     state = result.state;
     shop.award(result.reward);
     recordEndless();
@@ -640,10 +643,11 @@ async function chooseTile(tileId) {
     return;
   }
   const snapshot = juice.capture(state.tiles.find(tile => tile.id === tileId), getRailTiles(state));
+  juice.obstacles(state,result.state);
   state = result.state;
   // A merge has a short visual resolution; ordinary picks remain rapid-fire.
   isResolving = !!result.harvested || state.status === 'lost';
-  sounds.play(result.harvested ? 'triple' : 'pick');
+  sounds.play('pick');
   if (state.status === 'lost') {
     resolveEpoch++; isDelivering = false; clearHandoff();
     recordEndless();
@@ -651,7 +655,7 @@ async function chooseTile(tileId) {
   }
   const epoch = resolveEpoch;
   render();
-  await juice.pick(snapshot, result.harvested);
+  await juice.pick(snapshot, result.harvested, () => sounds.play('triple'));
   if (epoch !== resolveEpoch || isMenuOpen) return;
   if (state.status === 'lost') { isResolving = false; render(); return; }
   if (result.harvested) { isResolving = false; render(); void resolveAutoOrders(); }

@@ -1,12 +1,13 @@
 // Shared, deterministic squash-and-stretch for DOM and native Canvas.
-export const MOTION = { pick: 640, merge: 500, bounce: 460, craft: 340 };
+export const MOTION = Object.freeze({ pick: 460, merge: 340, bounce: 360, craft: 300 });
+export const PICK_LANDING = .42;
+export const MERGE_IMPACT = .5;
 const clamp = n => Math.max(0, Math.min(1, n));
 const mix = (a, b, t) => a + (b - a) * t;
 const REST = { sx: 1, sy: 1, y: 0, rotate: 0 };
 const KEYS = [
-  [0, 1.22, .76, 3, -3], [.2, .86, 1.18, -9, 3],
-  [.43, 1.12, .88, 2, -2], [.65, .96, 1.05, -2, 1],
-  [.82, 1.025, .98, 0, -.3], [1, 1, 1, 0, 0]
+  [0, 1.12, .88, 2, 0], [.32, .96, 1.04, -3, 0],
+  [1, 1, 1, 0, 0]
 ];
 export function jellyPose(progress, strength = 1) {
   if (progress < 0 || progress >= 1) return { ...REST };
@@ -25,7 +26,7 @@ export function settlePose(progress) {
 }
 // Rectangles use center coordinates; layout/hit boxes never follow the wobble.
 export function flightPose(progress, from, to, merge = false, softLanding = false) {
-  const t=clamp(progress), landingAt=softLanding ? .44 : .68;
+  const t=clamp(progress), landingAt=softLanding ? PICK_LANDING : .68;
   const travel=clamp(t/landingAt), ease=1-Math.pow(1-travel,3);
   if(t===0||t===1)return { ...(t===0?from:to), rotate:0, opacity:merge&&t===1?0:1 };
   const land=t<landingAt?{sx:1-.12*Math.sin(travel*Math.PI),sy:1+.14*Math.sin(travel*Math.PI),y:0,rotate:-7*Math.sin(travel*Math.PI)}
@@ -34,6 +35,24 @@ export function flightPose(progress, from, to, merge = false, softLanding = fals
   return { x:mix(from.x,to.x,ease),y:mix(from.y,to.y,ease)-Math.sin(travel*Math.PI)*lift+land.y,
     w:mix(from.w,to.w,ease)*land.sx,h:mix(from.h,to.h,ease)*land.sy,
     rotate:land.rotate,opacity:merge?1-clamp((t-.76)/.24):1 };
+}
+// Three cards meet in the rail first. Only the last card carries the merged
+// ingredient onward, so the plate no longer receives three ghost copies.
+export function mergePose(progress, from, gather, to, leader = true) {
+  const t = clamp(progress);
+  if (t === 1) return { ...(leader ? to : gather), rotate: 0, opacity: 0, card: 0 };
+  if (t < MERGE_IMPACT) {
+    const p = t / MERGE_IMPACT, ease = 1 - (1 - p) ** 3;
+    return { x: mix(from.x, gather.x, ease), y: mix(from.y, gather.y, ease) - Math.sin(p * Math.PI) * 20,
+      w: mix(from.w, gather.w, ease), h: mix(from.h, gather.h, ease), rotate: 0, opacity: 1, card: 1 };
+  }
+  const squeeze = clamp((t - MERGE_IMPACT) / .12);
+  if (t < .62 || !leader) return { ...gather, w: gather.w * (1 + .1 * squeeze), h: gather.h * (1 - .1 * squeeze),
+    rotate: 0, opacity: leader ? 1 : 1 - squeeze, card: 1 - squeeze };
+  const p = (t - .62) / .38, ease = p * p * (3 - 2 * p);
+  return { x: mix(gather.x, to.x, ease), y: mix(gather.y, to.y, ease) - Math.sin(p * Math.PI) * 16,
+    w: mix(gather.w * 1.1, to.w, ease), h: mix(gather.h * .9, to.h, ease),
+    rotate: 0, opacity: 1 - clamp((p - .8) / .2), card: 0 };
 }
 export function jellyFrames(strength = 1) {
   return Array.from({length:31},(_,i)=>{const p=jellyPose(i/30,strength);return {offset:i/30,transform:`translateY(${p.y}px) rotate(${p.rotate}deg) scale(${p.sx}, ${p.sy})`};});

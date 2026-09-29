@@ -6,7 +6,7 @@ import { SHOP_THEMES, getDecoration, getTheme, DECOR_FILTERS, getDecorCatalog, g
 import { DECOR_ART } from '../../src/decor-assets.js';
 import { GAME_IMAGES } from '../../src/asset-manifest.js';
 import { loadingSnapshot, createTaskCache } from '../../src/loading-core.js';
-import { MOTION, jellyPose, flightPose } from '../../src/motion-core.js';
+import { MOTION, MERGE_IMPACT, jellyPose, flightPose, mergePose } from '../../src/motion-core.js';
 import { Session } from './session.js';
 import { MENU_PAGES, menuPageIndex, stepMenuPage } from '../../src/menu-pages.js';
 import { SEAL_HINT, SEAL_COLORS, SEAL_MOTION_MS, SEAL_BANDS, getSealLayers, sealPeelPose } from '../../src/nori-seals.js';
@@ -15,6 +15,7 @@ import { outcomeSummary } from '../../src/outcome-core.js';
 import { BOARD_SHAPES, shapeBoardFrame, drawShapeGuide } from '../../src/board-shapes.js';
 import { isObstacleLocked, boardObstacleHint, obstacleLabel, OBSTACLE_NAMES } from '../../src/obstacles.js';
 import { drawObstacleArt } from '../../src/obstacle-art.js';
+import { PlayEffects, drawPlayEffects, obstacleTransitions, COIN_ART } from '../../src/play-effects.js';
 
 const W = 390;
 const inside = (p, r) => p.x >= r.x && p.x <= r.x+r.w && p.y >= r.y && p.y <= r.y+r.h;
@@ -24,6 +25,7 @@ export class CanvasApp {
     this.p = platform; this.ctx = platform.canvas.getContext('2d'); this.session = new Session(platform);
     this.images = new Map(); this.cache = createTaskCache(); this.hits = []; this.bounce = 0;
     this.motionTime = 0; this.flights = new Map(); this.pulses = new Map(); this.sealPeels = new Map(); this.mergeUntil = 0;
+    this.effects = new PlayEffects();
     this.playClock = createPlayClock(); this.resultGame = null; this.resultStarted = 0;
     this.loading = true; this.loadError = false; this.busyLoading = false; this.startedAt = platform.now();
     this.loaded = 0; this.total = GAME_IMAGES.length + 1; this.packageProgress = 0;
@@ -72,10 +74,11 @@ export class CanvasApp {
     const now = this.p.now(), elapsed = Math.min(50, now-this.lastFrame); this.lastFrame = now;
     this.advanceClock(now);
     this.motionTime += elapsed;
-    const wasMoving = this.flights.size || this.pulses.size || this.sealPeels.size;
+    const wasMoving = this.flights.size || this.pulses.size || this.sealPeels.size || this.effects.items.length;
+    this.effects.step(elapsed);
     for (const [id, peel] of this.sealPeels) if (this.motionTime-peel.start >= SEAL_MOTION_MS) this.sealPeels.delete(id);
     for (const [id, flight] of this.flights) if (this.motionTime-flight.start >= flight.duration) {
-      this.flights.delete(id); if(flight.merge)this.pulses.set('prep',this.motionTime);
+      this.flights.delete(id); if(flight.merge&&flight.leader)this.pulses.set('prep',this.motionTime);
     }
     for (const [id, start] of this.pulses) if (this.motionTime-start >= MOTION.bounce) this.pulses.delete(id);
     if (this.loading && loadingSnapshot({ startedAt: this.startedAt, now, done: this.loaded, total: this.total, failed: Number(this.loadError) }).ready) {
@@ -85,7 +88,11 @@ export class CanvasApp {
     // An in-flight dish keeps moving during a rail merge; only starting a new
     // dish waits until its ingredient animation has reached the pantry.
     if (!this.loading) this.session.tick(elapsed, this.motionTime >= this.mergeUntil);
-    if(previous&&previous!==this.session.game)this.pulseObstacleChanges(previous);
+    if(previous&&previous!==this.session.game){
+      this.pulseObstacleChanges(previous);
+      if(!previous.workbench.crafted&&this.session.game.workbench.crafted)this.effects.add('craft',{x:195,y:this.H-this.bottom-139},{delay:100});
+      if(this.session.game.served>previous.served)this.effects.add('reward',{x:79,y:this.top+120},{to:{x:285,y:this.top+24}});
+    }
     const noticeVisible = now < this.messageUntil;
     const resultMoving=this.session.scene==='game'&&this.session.game?.status!=='playing'&&this.motionTime-this.resultStarted<2100;
     if (this.loading || this.dirty || wasMoving || this.pulses.size || delivery || this.session.delivery || previous !== this.session.game || noticeVisible !== this.noticeVisible || resultMoving) {
@@ -132,7 +139,11 @@ export class CanvasApp {
       this.render(this.p.now());
     }
   }
-  clearMotion() { this.flights.clear();this.pulses.clear();this.sealPeels.clear();this.mergeUntil=0;this.resultGame=null; }
+  clearMotion() { this.flights.clear();this.pulses.clear();this.sealPeels.clear();this.effects.clear();this.mergeUntil=0;this.resultGame=null; }
+  flightPosition(flight) {
+    const t=(this.motionTime-flight.start)/flight.duration;
+    return flight.merge?mergePose(t,flight.from,flight.gather,flight.to,flight.leader):flightPose(t,flight.from,flight.to,false,true);
+  }
   elastic(key,x,y,w,h,draw,strength=1) {
     const start=this.pulses.get(key),held=this.press?.target?.key===key&&!this.press.moved;
     const pose=held?{sx:1.09,sy:.84,y:3,rotate:0}:jellyPose(start===undefined?-1:(this.motionTime-start)/MOTION.bounce,strength);
@@ -152,21 +163,23 @@ export class CanvasApp {
     for(const [index,item] of before.entries()){
       if(merge&&item.ingredient===tile.ingredient)continue;
       const nextIndex=after.findIndex(t=>t.id===item.id);if(nextIndex===index)continue;
-      const current=this.flights.get(item.id),source=current?flightPose((this.motionTime-current.start)/current.duration,current.from,current.to,current.merge,!current.merge):this.railRect(index);
+      const current=this.flights.get(item.id),source=current?this.flightPosition(current):this.railRect(index);
       this.flights.set(item.id,{id:item.id,ingredient:item.ingredient,from:source,to:this.railRect(nextIndex),start:this.motionTime,duration:MOTION.pick,merge:false});
     }
-    const target=merge?{x:215,y:this.H-this.bottom-139,w:37,h:37}:this.railRect(this.session.game.rail.indexOf(tile.id));
+    const target=merge?{x:195,y:this.H-this.bottom-139,w:34,h:34}:this.railRect(this.session.game.rail.indexOf(tile.id));
+    const gather=merge?{...this.railRect(matches.reduce((n,item)=>n+before.findIndex(t=>t.id===item.id),0)/2),w:34,h:34}:null;
     const ingredients=merge?[...matches,tile]:[tile];
-    for(const item of ingredients){const current=this.flights.get(item.id),source=item.id===tile.id?from:current?flightPose((this.motionTime-current.start)/current.duration,current.from,current.to,current.merge,!current.merge):this.railRect(before.findIndex(t=>t.id===item.id));
-      this.flights.set(item.id,{id:item.id,ingredient:item.ingredient,from:source,to:target,start:this.motionTime,duration,merge});
+    for(const item of ingredients){const current=this.flights.get(item.id),source=item.id===tile.id?from:current?this.flightPosition(current):this.railRect(before.findIndex(t=>t.id===item.id));
+      this.flights.set(item.id,{id:item.id,ingredient:item.ingredient,from:source,to:target,start:this.motionTime,duration,merge,gather,leader:item.id===tile.id});
     }
-    if(merge)this.mergeUntil=this.motionTime+duration;
+    if(merge){this.mergeUntil=this.motionTime+duration;this.effects.add('merge',gather,{delay:duration*MERGE_IMPACT});}
   }
   drawFlights() {
     for(const flight of this.flights.values()){
-      const pose=flightPose((this.motionTime-flight.start)/flight.duration,flight.from,flight.to,flight.merge,!flight.merge),c=this.ctx;
+      const pose=this.flightPosition(flight),c=this.ctx;
       c.save();c.globalAlpha=pose.opacity;c.translate(pose.x,pose.y);c.rotate(pose.rotate*Math.PI/180);
-      this.box(-pose.w/2,-pose.h/2+3,pose.w,pose.h,'#cbaa83',9);this.box(-pose.w/2,-pose.h/2,pose.w,pose.h,'#fff9e8',9,flight.merge?'#f3ce83':'#fff2d6');
+      c.save();c.globalAlpha*=pose.card??1;
+      this.box(-pose.w/2,-pose.h/2+3,pose.w,pose.h,'#cbaa83',9);this.box(-pose.w/2,-pose.h/2,pose.w,pose.h,'#fff9e8',9,flight.merge?'#f3ce83':'#fff2d6');c.restore();
       this.food('ingredient',flight.ingredient,-pose.w*.44,-pose.h*.44,pose.w*.88,pose.h*.88);c.restore();
     }
   }
@@ -186,6 +199,14 @@ export class CanvasApp {
     for(const tile of this.session.game.tiles){
       const before=previous.tiles.find(t=>t.id===tile.id);
       if(before&&tile.active&&obstacleLabel(before,previous.served)!==obstacleLabel(tile,this.session.game.served))this.pulses.set('tile:'+tile.id,this.motionTime);
+    }
+    if(!this.board)return;
+    const depths=getTileCoverDepths(previous),board=this.board,level=this.session.level;
+    for(const change of obstacleTransitions(previous,this.session.game)){
+      if(depths.get(change.id)!==0)continue;
+      const tile=previous.tiles.find(t=>t.id===change.id),p=change.part,shape=BOARD_SHAPES[level.shape];
+      const w=board.w*(shape?level.footprint.x/100:.195),h=shape?board.h*level.footprint.y/100:Math.min(87,board.h*level.footprint.y/100*.85);
+      this.effects.add('obstacle',{x:board.x+tile.x/100*board.w+w*((p.x+p.w/2)/64-.5),y:board.y+tile.y/100*board.h+h*((p.y+p.h/2)/64-.5),w:w*p.w/64,h:h*p.h/64},change);
     }
   }
   hit(x,y,w,h,action,extra = {}) { this.hits.push({ x,y,w,h,action,...extra }); }
@@ -341,6 +362,7 @@ export class CanvasApp {
     const s=this.session,g=s.game,H=this.H-this.bottom,top=this.top;this.box(0,0,W,this.H,'#93ded8',0);
     this.button('小店',12,top+9,55,29,()=>s.menu(),{size:12});
     this.text('订单 '+g.served+'/'+g.customers.length,124,top+24,12);this.text('备料 '+g.rail.length+'/7',226,top+24,12);
+    this.sprite(COIN_ART.file,null,264,top+16,16,16);this.text(g.mode==='endless'?g.runCoins:g.coins,317,top+24,10,'#9b6e32','right');
     this.button(s.muted?'静音':'♪',326,top+9,49,29,()=>s.toggleSound(),{size:12});
     this.text(g.mode==='endless'?'无尽 · 第 '+g.wave+' 波':'第 '+(g.levelIndex+1)+' 天 · '+s.level.name,15,top+51,11,'#527d77','left');
     if(Number.isFinite(g.timeRemainingMs))this.text((g.timeStarted?(s.delivery||this.motionTime<this.mergeUntil?'暂停 ':'剩余 '):'点牌开始 ')+formatTime(g.timeRemainingMs),375,top+51,11,g.timeRemainingMs<=20000?'#ae453f':'#376f72','right');
@@ -372,7 +394,8 @@ export class CanvasApp {
     this.box(12,H-94,366,82,'#cf926b',14,'#b67752');this.text('备料栏',27,H-79,11,'#fff5e5','left');this.button('撤回 ×'+g.undoTokens,284,H-89,80,23,()=>{this.clearMotion();s.undo();},{disabled:this.motionTime<this.mergeUntil||!g.undoTokens||!g.rail.length,size:10});
     const rail=getRailTiles(g);for(let i=0;i<7;i++){const x=24+i*49;this.box(x,H-61,44,42,'#8f8495',8,'#6e627d');if(rail[i]&&!this.flights.has(rail[i].id))this.elastic('rail:'+rail[i].id,x,H-61,44,42,()=>{this.box(x,H-61,44,42,'#fff8e6',8,'#f0d4a7');this.food('ingredient',rail[i].ingredient,x+4,H-58,36,36);},.45);}
     this.drawFlights();
-    if(g.status!=='playing')this.drawResult();
+    drawPlayEffects(this.ctx,this.effects,this.images);
+    if(g.status!=='playing'&&(g.status!=='won'||!this.effects.has('reward')))this.drawResult();
   }
   drawResult() {
     const s=this.session,g=s.game,summary=outcomeSummary(g),won=summary.won;

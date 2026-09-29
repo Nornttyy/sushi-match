@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { jellyPose, settlePose, flightPose, jellyFrames, MOTION } from '../src/motion-core.js';
+import { jellyPose, settlePose, flightPose, jellyFrames, MOTION, PICK_LANDING } from '../src/motion-core.js';
 import { CanvasApp } from '../wechat/src/canvas-app.js';
 import { LEVELS, getRailTiles, getVisibleTiles } from '../src/game-core.js';
 
 test('jelly compresses, overshoots, damps, and ends exactly at rest',()=>{
   assert.ok(jellyPose(0).sx>1 && jellyPose(0).sy<1);
-  assert.ok(jellyPose(.2).sx<1 && jellyPose(.2).sy>1);
+  assert.ok(jellyPose(.32).sx<1 && jellyPose(.32).sy>1);
   assert.deepEqual(jellyPose(1),{sx:1,sy:1,y:0,rotate:0});
   assert.deepEqual(jellyPose(-1),jellyPose(1));
   for(let i=0;i<=1000;i++){const p=jellyPose(i/1000);assert.ok(p.sx>0&&p.sy>0);assert.ok(Math.abs(p.sx*p.sy-1)<.13);}
@@ -33,7 +33,8 @@ test('rail landing presses once, releases slowly, and never rotates or bounces a
     const p=flightPose(i/1000,from,to,false,true);
     assert.equal(p.x,to.x);assert.equal(p.rotate,0);assert.ok(p.y>=to.y-1e-10);
   }
-  assert.ok(MOTION.pick*.56>=350,'the landing gets time to settle');
+  assert.ok(MOTION.pick*(1-PICK_LANDING)>=250,'a quiet landing still gets at least a quarter second');
+  assert.ok(MOTION.pick*PICK_LANDING<=210,'travel arrives promptly without shortening everything');
   assert.deepEqual(flightPose(1,from,to,false,true),{...to,rotate:0,opacity:1});
 });
 

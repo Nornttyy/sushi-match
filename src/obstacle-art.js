@@ -39,10 +39,9 @@ export function renderObstacleArt(button,tile,served,visible){
   const parts=visible?obstacleArt(tile,served):[],signature=JSON.stringify(parts);
   if(button.dataset.obstacleArt===signature)return;
   const previous=button.querySelector('.obstacle-art:not(.is-opening)');
-  if(previous){
-    if(visible&&!parts.length){previous.classList.add('is-opening');previous.addEventListener('animationend',()=>previous.remove(),{once:true});}
-    else previous.remove();
-  }
+  // The shared cosmetic layer carries the original sprite pieces away.
+  // Remove the old static overlay immediately; never fade a duplicate on top.
+  if(previous)previous.remove();
   if(!visible)button.querySelectorAll('.obstacle-art').forEach(n=>n.remove());
   button.dataset.obstacleArt=signature;if(!parts.length)return;
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');

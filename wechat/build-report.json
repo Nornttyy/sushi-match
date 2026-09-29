@@ -12,6 +12,7 @@
     "resources/assets/menu/theme-garden-v1.png",
     "resources/assets/menu/theme-night-v1.png",
     "resources/assets/victory-platter-v1.png",
+    "resources/assets/effects/coin-v1.png",
     "resources/assets/menu/decor/tea-set-v1.png",
     "resources/assets/menu/decor/condiment-rack-v1.png",
     "resources/assets/menu/decor/flower-vase-v1.png",
@@ -31,8 +32,8 @@
     "game.js"
   ],
   "bytes": {
-    "main": 1212024,
-    "resources": 29154506
+    "main": 1217111,
+    "resources": 29988688
   },
   "testedOnDevice": false
 }

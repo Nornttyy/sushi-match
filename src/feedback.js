@@ -1,6 +1,7 @@
 import { getLevel } from './game-core.js';
 import { createCatPortrait, setCatState } from './cat-portrait.js';
 import { outcomeSummary } from './outcome-core.js';
+import { EFFECT_TIME } from './play-effects.js';
 export { outcomeSummary } from './outcome-core.js';
 
 export function mountFeedback({ overlay, gameShell, ingredientIcon }) {
@@ -105,7 +106,7 @@ export function mountFeedback({ overlay, gameShell, ingredientIcon }) {
           if (progress < 1) frame = requestAnimationFrame(count);
         }
         frame = requestAnimationFrame(count);
-      }, reducedMotion.matches ? 0 : summary.won ? 160 : 620);
+      }, reducedMotion.matches ? 0 : summary.won ? EFFECT_TIME.reward+80 : 620);
     }
   };
 }
