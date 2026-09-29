@@ -13,7 +13,7 @@ import { Session } from '../wechat/src/session.js';
 const digest=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function originalDeal(level){
   const {obstacleVersion,obstacleKinds,...deal}=level;
-  return {...deal,tiles:level.tiles.map(({obstacle,key,...tile})=>tile)};
+  return {...deal,tiles:level.tiles.map(({obstacle,key,sealLayers,...tile})=>tile)};
 }
 function settle(s){
   while(canCraftActive(s))s=serveActiveCustomer(craftActiveSushi(s).state).state;
@@ -37,7 +37,8 @@ test('continuous campaign retains authored days and regenerates the same deal af
   assert.equal(LEVELS.length,48);
   for(let i=0;i<48;i++)assert.equal(getCampaignLevel(i),LEVELS[i]);
   const first=getCampaignLevel(48),snapshot=digest(first);
-  assert.equal(digest(originalDeal(first)),'3d656b5be895a0708b0bf29c9d6da9e237d2177b6eb31bd3e08628ce6f0c0673','obstacle overlays must not change the original deal');
+  assert.equal(digest(originalDeal(first)),'e215516850623c39e73c16b7fa74eefbd7c0fa56a7483588e331155afb134bd8',
+    'obstacle overlays and safe wrap counts must not change ingredients, positions, seals or orders');
   for(let i=49;i<70;i++)getCampaignLevel(i);
   const regenerated=getCampaignLevel(48);
   assert.notEqual(first,regenerated,'visited definitions are evicted from a bounded cache');

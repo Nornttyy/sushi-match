@@ -1,6 +1,6 @@
 import { generateLayout, randomSource, MAX_STACK_LAYERS } from './level-generator.js';
 import { CAMPAIGN_LAYOUTS } from './campaign-layouts.js';
-import { areSealNeighbours, getSealLayers } from './nori-seals.js';
+import { areSealNeighbours, getSealLayers, stabilizeCampaignSeals } from './nori-seals.js';
 import { generateCampaignRecord } from './campaign-generator.js';
 import { campaignTimeLimit } from './timer-core.js';
 import { addCampaignObstacles, isObstacleLocked } from './obstacles.js';
@@ -129,8 +129,8 @@ function recordDefinition(record) {
   }));
   const layerFoods = Array.from({ length: Math.max(...tiles.map(t => t.layer)) + 1 },
     (_, layer) => tiles.filter(t => t.layer === layer).map(t => t.ingredient));
-  return addCampaignObstacles({ ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: info.designVersion || 2, layerFoods, top: layerFoods.at(-1),
-    layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) }, RECIPES);
+  return addCampaignObstacles(stabilizeCampaignSeals({ ...info, tiles, timeLimitMs: campaignTimeLimit(tiles.length, info.id, tiles.filter(t => t.sealed).length), layoutVersion: info.designVersion || 2, layerFoods, top: layerFoods.at(-1),
+    layers: layerFoods.map(foods => foods.length), solution: solution.map(i => tiles[i].id) }), RECIPES);
 }
 
 // Preserve the 48 authored deals; obstacle overlays have their own version. Later days are generated on

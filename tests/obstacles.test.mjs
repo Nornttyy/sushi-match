@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { LEVELS,createGame,getCampaignLevel,isTilePickable,selectTile,undoRailPick,canCraftActive,craftActiveSushi,serveActiveCustomer,getTileCoverDepths } from '../src/game-core.js';
 import { isObstacleLocked,obstacleLabel,boardObstacleHint } from '../src/obstacles.js';
 import { obstacleArt,drawObstacleArt } from '../src/obstacle-art.js';
+import { OBSTACLE_ASSETS } from '../src/obstacle-assets.js';
 import { outcomeSummary } from '../src/outcome-core.js';
 import { Session } from '../wechat/src/session.js';
 import { CanvasApp } from '../wechat/src/canvas-app.js';
@@ -98,12 +99,13 @@ test('introductions are spaced, later kinds rotate, and lightweight days remain'
   }
 });
 
-test('shared art and short hints need no emoji font, DOM, Path2D or external assets in Canvas',()=>{
+test('shared raster art and short hints need no emoji font, DOM or Path2D in Canvas',()=>{
   for(const obstacle of [{kind:'ice',remaining:1},{kind:'ice',remaining:2},{kind:'lock',key:1,open:false},{kind:'crate',orders:2}]){
     const tile={id:'art',active:true,obstacle},calls=[];
     const ctx=new Proxy({},{get:(_,k)=>(...v)=>calls.push([k,...v]),set:()=>true});
-    drawObstacleArt(ctx,tile,0,0,0,50,55);assert.ok(calls.some(([k])=>k==='stroke'));
-    assert.ok(obstacleArt(tile).length>2);assert.ok(obstacleLabel(tile));
+    const images=new Map(Object.values(OBSTACLE_ASSETS).map(a=>[a.file,{width:a.width,height:a.height}]));
+    drawObstacleArt(ctx,tile,0,0,0,50,55,images);assert.ok(calls.some(([k])=>k==='drawImage'));
+    assert.ok(obstacleArt(tile).some(p=>p.type==='sprite'));assert.ok(obstacleLabel(tile));
     assert.ok(boardObstacleHint({tiles:[tile],served:0},new Set(['art'])));
     assert.equal(boardObstacleHint({tiles:[tile],served:0},new Set()),'');
   }

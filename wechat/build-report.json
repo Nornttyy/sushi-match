@@ -21,13 +21,18 @@
     "resources/assets/menu/decor/bamboo-pot-v1.png",
     "resources/assets/menu/decor/cushion-bench-v1.png",
     "resources/assets/menu/decor/tea-cart-v1.png",
+    "resources/assets/obstacles/ice-full-v1.png",
+    "resources/assets/obstacles/ice-cracked-v1.png",
+    "resources/assets/obstacles/key-v1.png",
+    "resources/assets/obstacles/lock-v1.png",
+    "resources/assets/obstacles/crate-v1.png",
     "resources/assets/audio/bossa-antigua.mp3",
     "resources/assets/audio/CREDITS.md",
     "game.js"
   ],
   "bytes": {
-    "main": 1211849,
-    "resources": 26671053
+    "main": 1212024,
+    "resources": 29154506
   },
   "testedOnDevice": false
 }
